@@ -139,6 +139,73 @@ class AgentSession:
         if self.runner is not None:
             self.runner.stop()
 
+    # ---------------------------------------------------------- importing an export
+    @property
+    def mappings_dir(self) -> Path:
+        return config_dir() / "mappings"
+
+    def importable_modalities(self) -> List[str]:
+        """Tabular kinds of data this hospital can import from its own export (declared ones, if known)."""
+        from ml.common.tabular import TABULAR_MODALITIES
+
+        declared = self.declared() if self.profile else list(TABULAR_MODALITIES)
+        return [m for m in TABULAR_MODALITIES if m in declared]
+
+    def import_export(self, frame, mapping, folder: Optional[Path], source_name: str) -> dict:
+        """Convert the hospital's export with its column matching, write the data folder, check it, keep the
+        matching for next time. On this machine only."""
+        from ml.common.column_mapping import import_export, save_mapping
+        from ml.common.data_check import check_modality
+
+        if folder is None:
+            folder = config_dir() / "my-data" / ((self.profile or {}).get("hospital_id") or "hospital")
+        folder = Path(folder)
+        folder.mkdir(parents=True, exist_ok=True)
+        try:
+            result = import_export(frame, mapping, folder, source_name=source_name)
+        except ValueError as exc:
+            raise AgentError(str(exc)) from exc
+        save_mapping(self.mappings_dir, mapping)
+        manifest = result["manifest"]
+        return {
+            "folder": folder,
+            "check": check_modality(folder, mapping.modality),
+            "train": manifest["splits"]["train"],
+            "val": manifest["splits"]["val"],
+            "not_recorded": result["report"]["filled_with_reference"],
+        }
+
+    def score_frame(self, modality: str, folder: Optional[Path], frame):
+        """Score new patients. A file with the hospital's own headings is translated with its saved matching."""
+        import pandas as pd
+
+        from ml.common.column_mapping import apply_mapping, load_mapping
+        from ml.common.tabular import tabular_schema
+
+        predictor = self.predictor(modality, folder)
+        names = tabular_schema(modality).feature_names
+        if not set(names) <= set(map(str, frame.columns)):
+            mapping = load_mapping(self.mappings_dir, modality)
+            present = set(map(str, frame.columns))
+            if mapping is not None:
+                used = [c for c in mapping.features.values() if c]
+                # A measurement missing from this file is treated as not measured (estimated from local records),
+                # but most of the matched columns must be there, or this is a different layout.
+                if sum(c in present for c in used) < max(1, len(used) // 2 + 1):
+                    mapping = None
+                else:
+                    mapping.features = {k: (c if c in present else None) for k, c in mapping.features.items()}
+            if mapping is None:
+                raise AgentError(
+                    "This file's columns do not match the model's. Use 'Import data…' once with an export that has "
+                    "the same headings; the agent remembers the matching and uses it here."
+                )
+            table, _ = apply_mapping(frame, mapping, with_label=False, fill_not_recorded=False)
+            scored = predictor.predict_frame(table)
+            extra = [c for c in frame.columns if c not in set(filter(None, mapping.features.values()))]
+            return pd.concat([frame[extra].reset_index(drop=True), scored.reset_index(drop=True)], axis=1)
+        return predictor.predict_frame(frame)
+
     # ---------------------------------------------------------- prediction
     @property
     def models_dir(self) -> Path:

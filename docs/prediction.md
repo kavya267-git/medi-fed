@@ -1,11 +1,13 @@
 # Diabetes model and prediction for new patients
 
-Two additions answer "what is the trained model for?":
+Three additions answer "what is the trained model for?" and "what if our columns are named differently?":
 
 1. **Diabetes** is a fourth kind of data, trained federatedly like the others. The real records are the PIMA
    Indians Diabetes Database, split across hospitals A–D.
 2. **Predict** in the MediFed Hospital Agent uses the global model that the hospital kept from its last round on
    a new patient, and explains the result. This runs on the hospital's own computer and sends nothing.
+3. **Import data** in the agent matches the hospital's own export to the model's inputs, translates text and
+   units, and writes the data folder.
 
 Both are research prototypes, not medical devices. Every prediction carries that statement.
 
@@ -116,6 +118,44 @@ Values outside the plausibility range are refused with "check the units".
 
 Code: `ml/prediction/local.py`, which is the logic and is tested in `ml/tests/test_prediction.py`, and
 `hospital_agent/medifed_agent/predict_window.py`, which is the window.
+
+## Import data (MediFed Hospital Agent)
+
+Hospitals name their columns differently: "Age", "AGE_YRS" or "pt_age"; "Pulse", "HR" or "heart_rate_bpm". The
+agent does not guess silently. **Import data…** lets the hospital match its own CSV export to the model's inputs
+on its own computer:
+
+1. **Choose the export.** Pick the kind of data (EHR or diabetes) and the CSV file.
+2. **Check each match.** Every model input has a dropdown of the file's own headings. The agent pre-selects
+   matches from common names, and from LOINC codes in a heading (for example `8867-4` heart rate, `2160-0`
+   creatinine), which identify a measurement for certain. The person checks every row, or picks **not
+   recorded**.
+3. **Pick the outcome and patient columns.** Choose the outcome column. Optionally choose a patient-ID column,
+   which keeps one patient's rows on the same side of the 75% / 25% split.
+4. **Translate text values.** The agent lists the text it found ("Died" / "Discharged", "M" / "F",
+   "tested_positive"). The person ticks which values mean yes, or male.
+5. **Confirm unit conversions.** When a column's typical value suggests other units, the agent offers to
+   convert. Each conversion can be unticked:
+   - °F → °C
+   - glucose mmol/L → mg/dL
+   - creatinine µmol/L → mg/dL
+   - haemoglobin g/L → g/dL
+   - SpO2 as a fraction → %
+
+   For diabetes, the person can also mark "0 means not measured", as in the PIMA file.
+6. **Import.** The agent writes `train.csv` and `val.csv` into the data folder, runs the local data check
+   (pass or fail with the problems listed) and saves the matching. The next export with the same headings
+   opens pre-filled.
+
+**Not recorded inputs.** An input the hospital does not record is filled with its reference value for training,
+so the model learns nothing from it at that hospital. The import result says so.
+
+**Scoring a CSV.** **Score a CSV file…** in the Predict window uses the same saved matching, so a file of new
+patients with the hospital's own headings scores directly. A measurement missing from that file is estimated
+from the hospital's own records.
+
+Code: `ml/common/column_mapping.py`, tested in `ml/tests/test_column_mapping.py`, and
+`hospital_agent/medifed_agent/import_window.py`.
 
 ## What it is not
 

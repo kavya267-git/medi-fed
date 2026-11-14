@@ -211,7 +211,7 @@ class PredictWindow:
             import pandas as pd
 
             frame = pd.read_csv(source)
-            scored = self.session.predictor(modality, Path(folder) if folder else None).predict_frame(frame)
+            scored = self.session.score_frame(modality, Path(folder) if folder else None, frame)
             scored.to_csv(target, index=False)
             return scored
 

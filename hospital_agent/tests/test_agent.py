@@ -141,3 +141,45 @@ def test_predict_with_the_saved_global_model_on_this_computer(agent_home, tmp_pa
         "skin_thickness",
         "insulin",
     }
+
+
+def test_import_an_export_with_own_headings_then_score_new_patients(agent_home, tmp_path, monkeypatch):
+    """Import with the hospital's own column names; later files with the same headings are scored the same way."""
+    import numpy as np
+    import pandas as pd
+
+    from ml.common.column_mapping import suggest_mapping
+    from ml.common.types import TrainConfig
+    from ml.common.weights import weights_to_bytes
+    from ml.registry import get_adapter
+    from ml.simulation.diabetes import DiabetesProfile, simulate_diabetes
+    from ml.training.local_trainer import train_on_local_data
+    from ml.training.model_store import save_global_model
+
+    monkeypatch.setenv("ML_BACKEND", "numpy-reference")
+    X, y = simulate_diabetes(160, np.random.default_rng(0), DiabetesProfile(unmeasured=0.0))
+    headings = ["Preg", "Glucose", "BloodPressure", "SkinThickness", "Insulin", "BMI", "DPF", "Age"]
+    export = pd.DataFrame(X, columns=headings)
+    export["Result"] = np.where(y == 1, "tested_positive", "tested_negative")
+    session = AgentSession(log=lambda line: None)
+    assert session.importable_modalities() == ["ehr", "diabetes"]
+
+    mapping = suggest_mapping("diabetes", export.columns)
+    mapping.label = "Result"
+    mapping.label_positive = ["tested_positive"]
+    result = session.import_export(export, mapping, None, "export.csv")
+    assert result["check"]["passed"], result["check"]["problems"]
+    assert result["train"] + result["val"] == 160 and (agent_home / "mappings" / "diabetes.json").exists()
+
+    folder = result["folder"]
+    adapter = get_adapter("diabetes", "numpy-reference")
+    weights = train_on_local_data(folder, "diabetes", adapter.init_weights(0), TrainConfig(2, 32, 0.01, 0), "numpy-reference").weights
+    save_global_model(session.models_dir, "diabetes", weights_to_bytes(weights), {"architecture": adapter.architecture})
+
+    new_patients = pd.DataFrame(X[:5], columns=headings).drop(columns=["Insulin"])  # not measured this time
+    new_patients.insert(0, "Patient", [f"N{i}" for i in range(5)])
+    scored = session.score_frame("diabetes", folder, new_patients)
+    assert list(scored["Patient"]) == [f"N{i}" for i in range(5)]
+    assert scored["probability"].between(0, 1).all() and (scored["estimated_inputs"].str.contains("Insulin")).all()
+    with pytest.raises(AgentError, match="Import data"):
+        session.score_frame("diabetes", folder, pd.DataFrame({"x": [1.0]}))

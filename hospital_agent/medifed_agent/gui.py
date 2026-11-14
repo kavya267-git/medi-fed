@@ -79,6 +79,7 @@ class AgentWindow:
 
         actions = ttk.Frame(outer)
         actions.pack(fill="x", pady=(12, 6))
+        ttk.Button(actions, text="Import data…", command=self.open_import).pack(side="left", padx=(0, 8))
         ttk.Button(actions, text="Check data", command=self.check_data).pack(side="left")
         self.connect_button = ttk.Button(actions, text="Connect", command=self.connect)
         self.connect_button.pack(side="left", padx=8)
@@ -277,6 +278,27 @@ class AgentWindow:
         self._log("taking part in rounds" if self.take_part.get() else "not taking part: invitations will be declined")
         self._save()
         self._refresh_status()
+
+    def open_import(self) -> None:
+        from .import_window import ImportWindow
+
+        def set_folder(folder: str) -> None:
+            self.folder.set(folder)
+            self._update_sample_note()
+            self._save()
+
+        ImportWindow(self.root, self.session, self.folder.get, set_folder, self._in_background, self._log,
+                     self._show_checks)
+
+    def _show_checks(self, results: dict) -> None:
+        for modality, result in results.items():
+            for item in self.checks.get_children():
+                if self.checks.item(item, "text") == LABELS.get(modality, modality):
+                    self.checks.delete(item)
+            verdict = "Passed" if result["passed"] else "Failed"
+            notes = "; ".join(result["problems"]) or ", ".join(f"{k} {v}" for k, v in result["label_counts"].items())
+            self.checks.insert("", "end", text=LABELS.get(modality, modality),
+                               values=(verdict, result["train_records"], result["val_records"], notes))
 
     def open_predict(self) -> None:
         from .predict_window import PredictWindow
