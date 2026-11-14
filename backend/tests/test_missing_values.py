@@ -18,7 +18,7 @@ def test_rounds_without_the_setting_send_nothing_extra(ctx):
     assert "missingness" not in ctx.coordinator.node_round_info(created["id"])["training"]
 
 
-@pytest.mark.parametrize("modality, rate, message", [("ecg", 0.1, "EHR rounds only"), ("ehr", 0.6, "between 0 and 0.5")])
+@pytest.mark.parametrize("modality, rate, message", [("ecg", 0.1, "EHR and diabetes rounds only"), ("ehr", 0.6, "between 0 and 0.5")])
 def test_invalid_missingness_is_refused(ctx, modality, rate, message):
     with pytest.raises(Exception, match=message):
         ctx.coordinator.start_round(modality, ctx.hospitals.list_raw(), "tester", simulated_missing_rate=rate)

@@ -12,6 +12,7 @@ const KINDS = [
   { id: 'ehr', label: 'EHR', hint: 'structured admission records' },
   { id: 'ecg', label: 'ECG', hint: 'single heartbeats' },
   { id: 'xray', label: 'X-ray', hint: 'frontal chest images' },
+  { id: 'diabetes', label: 'Diabetes', hint: 'glucose, BMI, blood pressure and five more measurements' },
 ]
 export const CONFIRMATION = 'I confirm we will not upload patient data; training runs on our own machine.'
 

@@ -8,8 +8,8 @@ from pathlib import Path
 from typing import List, Optional, Tuple
 
 from ml.common.datasets import load_local_dataset
+from ml.common.tabular import is_tabular, tabular_schema
 from ml.common.types import ArrayDataset, EvalResult, TrainConfig, Weights
-from ml.ehr.features import EHR_REFERENCE_SCALE
 from ml.ehr.imputation import MissingnessConfig, impute_splits
 from ml.evaluation.metrics import metrics_from_evaluation
 from ml.registry import get_adapter
@@ -23,7 +23,7 @@ class LocalTrainingOutput:
     duration_seconds: float
     local_validation: dict  # metrics of the locally trained model on the local validation split
     dataset_source: str
-    #: EHR only: simulated gaps and imputation (counts only), or None.
+    #: Tabular modalities only: simulated gaps and imputation (counts only), or None.
     missing_values: Optional[dict] = field(default=None)
 
 
@@ -32,16 +32,17 @@ def load_training_splits(
 ) -> Tuple[ArrayDataset, ArrayDataset, Optional[dict]]:
     """This hospital's train and held-out splits, ready for the model.
 
-    For EHR, gaps (real ones, or simulated with ``missingness``) are filled by KNN imputation fitted on the
+    For a tabular modality (EHR, diabetes), gaps (real ones, or simulated with ``missingness``) are filled by KNN imputation fitted on the
     training split only; the held-out split is filled from training neighbours and never used to fit.
     """
-    allow = modality == "ehr"
+    allow = is_tabular(modality)
     train = load_local_dataset(hospital_dir, modality, "train", allow_missing_features=allow)
     val = load_local_dataset(hospital_dir, modality, "val", allow_missing_features=allow)
-    if modality != "ehr":
+    if not allow:
         return train, val, None
     salt = zlib.crc32(str(Path(hospital_dir).resolve().name).encode())
-    X_train, X_val, report = impute_splits(train.X, val.X, missingness, salt=salt, scale=EHR_REFERENCE_SCALE)
+    scale = tabular_schema(modality).reference_scale
+    X_train, X_val, report = impute_splits(train.X, val.X, missingness, salt=salt, scale=scale)
     # Only reported when there were gaps to fill; otherwise nothing extra leaves the node.
     return replace(train, X=X_train), replace(val, X=X_val), (report if report["imputation"] else None)
 

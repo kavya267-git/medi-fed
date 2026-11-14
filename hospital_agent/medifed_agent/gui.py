@@ -14,7 +14,7 @@ from . import __version__
 from .session import AgentError, AgentSession
 from .settings import load_settings, load_token, save_settings, save_token, token_storage
 
-LABELS = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray"}
+LABELS = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray", "diabetes": "Diabetes"}
 BRAND = "#24489a"
 
 
@@ -84,6 +84,7 @@ class AgentWindow:
         self.connect_button.pack(side="left", padx=8)
         self.disconnect_button = ttk.Button(actions, text="Disconnect", command=self.disconnect, state="disabled")
         self.disconnect_button.pack(side="left")
+        ttk.Button(actions, text="Predict…", command=self.open_predict).pack(side="left", padx=(8, 0))
         self.take_part = tk.BooleanVar(value=saved.get("take_part", True))
         ttk.Checkbutton(actions, text="Take part in rounds", variable=self.take_part, command=self.toggle_take_part).pack(
             side="left", padx=16
@@ -276,6 +277,11 @@ class AgentWindow:
         self._log("taking part in rounds" if self.take_part.get() else "not taking part: invitations will be declined")
         self._save()
         self._refresh_status()
+
+    def open_predict(self) -> None:
+        from .predict_window import PredictWindow
+
+        PredictWindow(self.root, self.session, self.folder.get, self._in_background, self._log)
 
     def close(self) -> None:
         self.session.disconnect()

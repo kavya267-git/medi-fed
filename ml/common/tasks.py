@@ -44,7 +44,20 @@ XRAY_TASK = TaskSpec(
     metric_definitions=METRIC_DEFINITIONS_BINARY,
 )
 
-TASKS = {"ehr": EHR_TASK, "ecg": ECG_TASK, "xray": XRAY_TASK}
+DIABETES_TASK = TaskSpec(
+    modality="diabetes",
+    name="Diabetes prediction",
+    description=(
+        "Binary classification from eight routine measurements (glucose, BMI, blood pressure, insulin, age ...): "
+        "diabetes (yes / no), as in the PIMA Indians Diabetes Database."
+    ),
+    task_type="binary",
+    class_names=("No diabetes", "Diabetes"),
+    primary_metric="f1",
+    metric_definitions=METRIC_DEFINITIONS_BINARY,
+)
+
+TASKS = {"ehr": EHR_TASK, "ecg": ECG_TASK, "xray": XRAY_TASK, "diabetes": DIABETES_TASK}
 
 
 def get_task(modality: str) -> TaskSpec:

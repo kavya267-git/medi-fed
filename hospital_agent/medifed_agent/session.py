@@ -139,6 +139,35 @@ class AgentSession:
         if self.runner is not None:
             self.runner.stop()
 
+    # ---------------------------------------------------------- prediction
+    @property
+    def models_dir(self) -> Path:
+        return config_dir() / "models"
+
+    def saved_models(self) -> Dict[str, dict]:
+        """Global models kept on this computer that can predict for new patients: ``{modality: info}``."""
+        from ml.prediction.local import available_models
+
+        return available_models(self.models_dir)
+
+    def predictor(self, modality: str, folder: Optional[Path]):
+        """A predictor for the saved global model, filling gaps from this hospital's own training records.
+
+        Rebuilt when the saved model or the data folder changes. Runs on this machine only."""
+        from ml.prediction.local import LocalPredictor, PredictionUnavailable, load_local_model
+
+        info = self.saved_models().get(modality) or {}
+        key = (modality, info.get("sha256"), str(folder) if folder else None)
+        cached = getattr(self, "_predictor", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        try:
+            predictor = LocalPredictor(load_local_model(self.models_dir, modality), folder)
+        except PredictionUnavailable as exc:
+            raise AgentError(str(exc)) from exc
+        self._predictor = (key, predictor)
+        return predictor
+
     def set_take_part(self, value: bool) -> None:
         self.take_part = value
         if self.runner is not None:

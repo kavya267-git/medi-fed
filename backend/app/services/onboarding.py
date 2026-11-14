@@ -11,7 +11,8 @@ import json
 import zipfile
 from typing import Any, Dict
 
-from ml.common.data_check import EHR_BOUNDS, LABEL_NAMES, MAX_MISSING_SHARE, MIN_TRAIN_RECORDS
+from ml.common.data_check import EHR_BOUNDS, LABEL_NAMES, MAX_MISSING_SHARE, MIN_TRAIN_RECORDS, max_missing_share
+from ml.diabetes.features import DIABETES_BOUNDS, DIABETES_FEATURES, DIABETES_LABEL_COLUMN
 from ml.ecg.preprocess import ECG_BEAT_LENGTH
 from ml.ehr.features import EHR_FEATURES, EHR_LABEL_COLUMN
 
@@ -22,11 +23,21 @@ EXAMPLE_EHR_ROW = {
     "prior_admissions_12m": 1, "comorbidity_index": 3,
 }
 
+#: One made-up diabetes row (not a real patient), inside every bound of the local data check.
+EXAMPLE_DIABETES_ROW = {
+    "pregnancies": 2, "glucose": 128, "diastolic_bp": 74, "skin_thickness": 27, "insulin": 120, "bmi": 30.4,
+    "pedigree": 0.42, "age": 41,
+}
+
 
 def _readme(hospital_id: str) -> str:
     ehr_lines = "\n".join(
         f"  {f.name:22s} {f.unit:12s} {EHR_BOUNDS[f.name][0]}-{EHR_BOUNDS[f.name][1]:<6}  {f.description}"
         for f in EHR_FEATURES
+    )
+    diabetes_lines = "\n".join(
+        f"  {f.name:22s} {f.unit:12s} {DIABETES_BOUNDS[f.name][0]}-{DIABETES_BOUNDS[f.name][1]:<6}  {f.description}"
+        for f in DIABETES_FEATURES
     )
     return f"""MediFed data template for {hospital_id}
 =========================================
@@ -55,12 +66,22 @@ No header row. This is the MIT-BIH "heartbeat" CSV format. See ecg_example.csv.
 Frontal images as 8-bit greyscale, with a label per image: 0 = no finding, 1 = finding.
 Prepare them with scripts/prepare_real_data.py xray (NIH ChestX-ray14 index format).
 
+4. Diabetes (one row per patient)
+---------------------------------
+Columns (name, unit, accepted range, meaning), then `{DIABETES_LABEL_COLUMN}`:
+{diabetes_lines}
+  {DIABETES_LABEL_COLUMN:22s} 0 or 1       {LABEL_NAMES['diabetes'][0]} (0) / {LABEL_NAMES['diabetes'][1]} (1)
+
+The same eight measurements as the PIMA Indians Diabetes Database. Empty cells are allowed (at most
+{max_missing_share("diabetes"):.0%} per column) and are filled on your machine, as for EHR. See diabetes_example.csv.
+
 Turning your CSV files into the folder the node reads
 -----------------------------------------------------
 From the repository folder, once per kind of data:
 
   python scripts/prepare_real_data.py --hospitals {hospital_id} --data-root my-data ehr --csv admissions.csv
   python scripts/prepare_real_data.py --hospitals {hospital_id} --data-root my-data ecg --csv beats.csv
+  python scripts/prepare_real_data.py --hospitals {hospital_id} --data-root my-data diabetes --csv patients.csv
 
 This writes my-data/{hospital_id}/ehr/ and .../ecg/ (training and held-out splits). Then start the node with
 
@@ -80,6 +101,9 @@ def data_template_zip(hospital_id: str) -> bytes:
         names = [f.name for f in EHR_FEATURES] + [EHR_LABEL_COLUMN]
         row = [str(EXAMPLE_EHR_ROW[f.name]) for f in EHR_FEATURES] + ["0"]
         archive.writestr("ehr_example.csv", ",".join(names) + "\n" + ",".join(row) + "\n")
+        diabetes_names = [f.name for f in DIABETES_FEATURES] + [DIABETES_LABEL_COLUMN]
+        diabetes_row = [str(EXAMPLE_DIABETES_ROW[f.name]) for f in DIABETES_FEATURES] + ["0"]
+        archive.writestr("diabetes_example.csv", ",".join(diabetes_names) + "\n" + ",".join(diabetes_row) + "\n")
         # A smooth made-up curve, not a recording.
         beat = [round(0.5 + 0.4 * (1 if i == 40 else 0) + 0.05 * ((i % 20) / 20), 3) for i in range(ECG_BEAT_LENGTH)]
         archive.writestr("ecg_example.csv", ",".join(str(v) for v in beat) + ",0\n")
@@ -90,6 +114,10 @@ def data_template_zip(hospital_id: str) -> bytes:
                     "ehr": {"columns": names, "bounds": {k: list(v) for k, v in EHR_BOUNDS.items()}},
                     "ecg": {"samples_per_beat": ECG_BEAT_LENGTH, "sampling_rate_hz": 125, "labels": LABEL_NAMES["ecg"]},
                     "xray": {"format": "8-bit greyscale, [n, height, width]", "labels": LABEL_NAMES["xray"]},
+                    "diabetes": {
+                        "columns": diabetes_names,
+                        "bounds": {k: list(v) for k, v in DIABETES_BOUNDS.items()},
+                    },
                 },
                 indent=2,
             ),

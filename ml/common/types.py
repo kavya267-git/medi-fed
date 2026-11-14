@@ -12,7 +12,7 @@ import numpy as np
 # the coordinator never needs a deep-learning framework to aggregate.
 Weights = Dict[str, np.ndarray]
 
-MODALITIES = ("ehr", "ecg", "xray")
+MODALITIES = ("ehr", "ecg", "xray", "diabetes")
 
 
 @dataclass

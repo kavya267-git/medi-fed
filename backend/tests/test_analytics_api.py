@@ -6,7 +6,7 @@ from backend_test_helpers import login, wait_for_round
 def test_overview_before_any_round(client, viewer):
     overview = client.get("/api/analytics/overview", headers=viewer).json()
     kpis = overview["kpis"]
-    assert kpis["participating_hospitals"] == 4 and kpis["modalities"] == 3
+    assert kpis["participating_hospitals"] == 4 and kpis["modalities"] == 4
     assert kpis["fl_rounds_total"] == 0 and kpis["models_trained"] == 0
     assert all(model["metrics"] is None for model in overview["models"])
     assert overview["data_status"]["simulated"] is True
@@ -80,7 +80,7 @@ def test_forecast(client, viewer):
 
 
 def test_explainability_is_unavailable_until_a_model_is_trained(client, viewer):
-    for modality in ("ehr", "ecg", "xray"):
+    for modality in ("ehr", "ecg", "xray", "diabetes"):
         body = client.get("/api/analytics/explainability", params={"modality": modality}, headers=viewer).json()
         assert body["available"] is False and body["explanation"] is None
         assert "not been trained" in body["reason"]
@@ -88,7 +88,7 @@ def test_explainability_is_unavailable_until_a_model_is_trained(client, viewer):
 
 
 def test_explainability_after_training(client, coordinator):
-    for modality in ("ehr", "ecg", "xray"):
+    for modality in ("ehr", "ecg", "xray", "diabetes"):
         round_id = client.post("/api/federated/rounds/start", json={"modality": modality}, headers=coordinator).json()[
             "id"
         ]
@@ -117,6 +117,18 @@ def test_explainability_after_training(client, coordinator):
         "/api/analytics/explainability", params={"modality": "ecg", "scope": "global"}, headers=coordinator
     ).json()
     assert ecg_global["available"] is False and ecg_global["reason"]
+
+    diabetes = client.get(
+        "/api/analytics/explainability", params={"modality": "diabetes", "scope": "individual"}, headers=coordinator
+    ).json()
+    assert diabetes["available"] is True and diabetes["explanation"]["modality"] == "diabetes"
+    assert [c["feature"] for c in diabetes["explanation"]["contributions"]].count("glucose") == 1
+    assert len(diabetes["explanation"]["contributions"]) == 8
+    diabetes_global = client.get(
+        "/api/analytics/explainability", params={"modality": "diabetes", "scope": "global"}, headers=coordinator
+    ).json()
+    assert diabetes_global["available"] is True and len(diabetes_global["explanation"]["features"]) == 8
+    assert diabetes_global["explanation"]["modality"] == "diabetes"
 
     xray = client.get("/api/analytics/explainability", params={"modality": "xray"}, headers=coordinator).json()
     assert xray["available"] and len(xray["explanation"]["heatmap"]) == 64

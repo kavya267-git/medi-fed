@@ -22,13 +22,13 @@ def data_root(tmp_path_factory):
     return root
 
 
-def test_there_are_four_hospitals_each_with_three_modalities(data_root):
+def test_there_are_four_hospitals_each_with_four_modalities(data_root):
     assert len(SIMULATED_HOSPITALS) == 4
     for hospital in SIMULATED_HOSPITALS:
         directory = data_root / hospital.hospital_id
-        assert sorted(p.name for p in directory.iterdir()) == ["ecg", "ehr", "xray"]
+        assert sorted(p.name for p in directory.iterdir()) == ["diabetes", "ecg", "ehr", "xray"]
         summary = local_data_summary(directory)
-        assert set(summary) == {"ehr", "ecg", "xray"}
+        assert set(summary) == {"ehr", "ecg", "xray", "diabetes"}
         for entry in summary.values():
             assert entry["simulated"] is True and entry["source"] == "simulated"
             assert entry["train_samples"] > entry["val_samples"] > 0

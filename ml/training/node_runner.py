@@ -35,7 +35,7 @@ from ml.training.hospital_node import HospitalNode
 from ml.training.http_transport import CoordinatorError, HttpTransport
 
 HEARTBEAT_SECONDS = 10.0
-MODALITY_NAMES = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray"}
+MODALITY_NAMES = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray", "diabetes": "Diabetes"}
 DECLINE_REASON = "participation is switched off on this hospital's dashboard"
 
 

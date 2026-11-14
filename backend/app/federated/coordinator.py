@@ -33,9 +33,9 @@ from app.services.audit_service import AuditService
 from app.services.model_registry import ModelRegistry
 from app.utils.errors import ConflictError, NotFoundError, PermissionDenied, ValidationFailed
 from app.utils.time import utc_now, utc_now_iso
+from ml.common.tabular import is_tabular, tabular_schema
 from ml.common.types import MODALITIES, EvalResult, TrainConfig
 from ml.common.weights import weights_from_bytes, weights_to_bytes
-from ml.ehr.features import feature_metadata
 from ml.evaluation.metrics import metrics_from_evaluation, pool_evaluations
 from ml.registry import get_adapter
 
@@ -87,8 +87,9 @@ logger = logging.getLogger("fl.coordinator")
 def default_class_weighting(modality: str, backend: str) -> str:
     """EHR is imbalanced (about 18% adverse outcomes in the simulated data), so EHR rounds weight each class by
     n / (2 n_class), computed by each hospital from its own training labels (experiment 1b). Unweighted, early
-    rounds predict only the majority class and the positive-class F1 is 0. Only the PyTorch models support it."""
-    return "balanced" if modality == "ehr" and backend == "pytorch" else "none"
+    rounds predict only the majority class and the positive-class F1 is 0. Diabetes (about 35% positive in PIMA) is
+    weighted the same way. Only the PyTorch models support it."""
+    return "balanced" if is_tabular(modality) and backend == "pytorch" else "none"
 
 
 def _iso_after(seconds: float) -> str:
@@ -262,8 +263,8 @@ class Coordinator:
             dp = self._adaptive_start(modality, dp)
         if not 0.0 <= simulated_missing_rate <= 0.5:
             raise ValidationFailed("simulated_missing_rate must be between 0 and 0.5")
-        if simulated_missing_rate > 0 and modality != "ehr":
-            raise ValidationFailed("Simulated missing values apply to EHR rounds only")
+        if simulated_missing_rate > 0 and not is_tabular(modality):
+            raise ValidationFailed("Simulated missing values apply to EHR and diabetes rounds only")
 
         selected = [
             h
@@ -318,7 +319,7 @@ class Coordinator:
                     "signature_label": adapter.signature_label,
                     "base_version": model["version"],
                 },
-                "explainability": {"global_importance": modality == "ehr"},
+                "explainability": {"global_importance": is_tabular(modality)},
             }
             now = utc_now_iso()
             self.db.insert(
@@ -870,8 +871,12 @@ class Coordinator:
                 )
 
             explanation = (
-                pool_global_importance([p["evaluation"].get("explanation") for p in evaluated], feature_metadata())
-                if modality == "ehr"
+                pool_global_importance(
+                    [p["evaluation"].get("explanation") for p in evaluated],
+                    tabular_schema(modality).feature_metadata(),
+                    modality,
+                )
+                if is_tabular(modality)
                 else None
             )
             if explanation is not None:

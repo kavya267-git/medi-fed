@@ -1,4 +1,4 @@
-"""Model-registry endpoints. A model is identified by its modality: ehr, ecg or xray."""
+"""Model-registry endpoints. A model is identified by its modality: ehr, ecg, xray or diabetes."""
 
 from __future__ import annotations
 

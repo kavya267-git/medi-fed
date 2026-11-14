@@ -16,6 +16,7 @@ import numpy as np
 
 from ml.common.datasets import read_manifest, save_local_dataset
 from ml.common.types import MODALITIES
+from ml.simulation.diabetes import DiabetesProfile, simulate_diabetes
 from ml.simulation.ecg import ECGProfile, simulate_ecg
 from ml.simulation.ehr import EHRProfile, simulate_ehr
 from ml.simulation.xray import XrayProfile, simulate_xray
@@ -32,6 +33,7 @@ class SimulatedHospital:
     ehr: EHRProfile = field(default_factory=EHRProfile)
     ecg: ECGProfile = field(default_factory=ECGProfile)
     xray: XrayProfile = field(default_factory=XrayProfile)
+    diabetes: DiabetesProfile = field(default_factory=DiabetesProfile)
 
 
 SIMULATED_HOSPITALS: List[SimulatedHospital] = [
@@ -39,37 +41,41 @@ SIMULATED_HOSPITALS: List[SimulatedHospital] = [
         "hospital_a",
         "Northfield General Hospital",
         "Teaching hospital",
-        {"ehr": 1200, "ecg": 640, "xray": 320},
+        {"ehr": 1200, "ecg": 640, "xray": 320, "diabetes": 260},
         EHRProfile(age_mean=63, acuity=0.25, prior_admission_rate=1.0),
         ECGProfile(class_mix=(0.70, 0.10, 0.15, 0.05), noise=0.035, gain=1.0),
         XrayProfile(prevalence=0.45, contrast=1.0, brightness=0.0),
+        DiabetesProfile(age_mean=38, bmi_mean=33.0, risk_shift=0.2),
     ),
     SimulatedHospital(
         "hospital_b",
         "Riverside Medical Centre",
         "Regional hospital",
-        {"ehr": 920, "ecg": 520, "xray": 260},
+        {"ehr": 920, "ecg": 520, "xray": 260, "diabetes": 200},
         EHRProfile(age_mean=58, acuity=0.0, prior_admission_rate=0.7),
         ECGProfile(class_mix=(0.55, 0.20, 0.20, 0.05), noise=0.05, gain=0.9),
         XrayProfile(prevalence=0.35, contrast=0.9, brightness=0.03),
+        DiabetesProfile(age_mean=33, bmi_mean=31.5, risk_shift=0.0),
     ),
     SimulatedHospital(
         "hospital_c",
         "St. Elara Community Hospital",
         "Community hospital",
-        {"ehr": 680, "ecg": 420, "xray": 220},
+        {"ehr": 680, "ecg": 420, "xray": 220, "diabetes": 160},
         EHRProfile(age_mean=68, acuity=-0.2, prior_admission_rate=0.9, measurement_noise=1.15),
         ECGProfile(class_mix=(0.80, 0.05, 0.10, 0.05), noise=0.06, gain=1.1),
         XrayProfile(prevalence=0.30, contrast=1.1, brightness=-0.03, noise=0.045),
+        DiabetesProfile(age_mean=30, bmi_mean=30.5, risk_shift=-0.4, unmeasured=0.45),
     ),
     SimulatedHospital(
         "hospital_d",
         "Harbourview Clinic",
         "Specialist cardiac clinic",
-        {"ehr": 520, "ecg": 360, "xray": 200},
+        {"ehr": 520, "ecg": 360, "xray": 200, "diabetes": 150},
         EHRProfile(age_mean=60, acuity=0.45, prior_admission_rate=1.3),
         ECGProfile(class_mix=(0.50, 0.15, 0.25, 0.10), noise=0.04, gain=1.0),
         XrayProfile(prevalence=0.50, contrast=0.95, brightness=0.02),
+        DiabetesProfile(age_mean=36, bmi_mean=34.0, risk_shift=0.5, unmeasured=0.15),
     ),
 ]
 
@@ -77,12 +83,13 @@ _DESCRIPTIONS = {
     "ehr": "Simulated structured admissions (14 features, binary outcome). Not real patient data.",
     "ecg": "Simulated single-beat ECG windows (187 samples, 4 AAMI-style classes). Not real recordings.",
     "xray": "Simulated 64x64 chest phantoms (finding / no finding). Not real radiographs.",
+    "diabetes": "Simulated diabetes screening records (8 PIMA-style measurements, diabetes yes / no). Not real patients.",
 }
 
 
 def sample_hospital(hospital_id: str, name: str, sizes: Optional[Dict[str, int]] = None) -> SimulatedHospital:
     """A SIMULATED profile for any hospital id (the agent's "Use sample data"): fictional records, default mix."""
-    default = {"ehr": 600, "ecg": 400, "xray": 200}
+    default = {"ehr": 600, "ecg": 400, "xray": 200, "diabetes": 200}
     chosen = {m: max(40, min(int((sizes or {}).get(m, default[m])), default[m] * 2)) for m in default}
     return SimulatedHospital(hospital_id, name, "Sample data (SIMULATED)", chosen)
 
@@ -104,6 +111,8 @@ def _simulate(hospital: SimulatedHospital, modality: str, n: int, rng: np.random
         return simulate_ehr(n, rng, hospital.ehr)
     if modality == "ecg":
         return simulate_ecg(n, rng, hospital.ecg)
+    if modality == "diabetes":
+        return simulate_diabetes(n, rng, hospital.diabetes)
     return simulate_xray(n, rng, hospital.xray)
 
 
@@ -154,6 +163,11 @@ def generate_reference_cases(modality: str, seed: int = 7) -> dict:
     rng = np.random.default_rng([seed, zlib.crc32(modality.encode())])
     if modality == "ehr":
         X, y = simulate_ehr(160, rng, EHRProfile())
+        cases = list(np.where(y == 1)[0][:3]) + list(np.where(y == 0)[0][:3])
+        rest = [i for i in range(len(y)) if i not in set(cases)]
+        return {"X": X[cases], "y": y[cases], "background": X[rest][:64]}
+    if modality == "diabetes":
+        X, y = simulate_diabetes(160, rng, DiabetesProfile(unmeasured=0.0))
         cases = list(np.where(y == 1)[0][:3]) + list(np.where(y == 0)[0][:3])
         rest = [i for i in range(len(y)) if i not in set(cases)]
         return {"X": X[cases], "y": y[cases], "background": X[rest][:64]}

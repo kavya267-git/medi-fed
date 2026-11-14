@@ -71,5 +71,5 @@ def test_rejects_non_finite_and_empty_inputs():
 
 
 def test_modalities_have_distinct_architecture_signatures():
-    signatures = {modality: get_adapter(modality).signature() for modality in ("ehr", "ecg", "xray")}
-    assert len(set(signatures.values())) == 3
+    signatures = {modality: get_adapter(modality).signature() for modality in ("ehr", "ecg", "xray", "diabetes")}
+    assert len(set(signatures.values())) == 4

@@ -212,7 +212,8 @@ function XrayIndividual({ explanation }) {
 
 function ExplanationBody({ data }) {
   const { explanation, modality, scope } = data
-  if (modality === 'ehr') return scope === 'global' ? <EhrGlobal explanation={explanation} /> : <EhrIndividual explanation={explanation} />
+  if (modality === 'ehr' || modality === 'diabetes')
+    return scope === 'global' ? <EhrGlobal explanation={explanation} /> : <EhrIndividual explanation={explanation} />
   if (modality === 'ecg') return <EcgIndividual explanation={explanation} />
   return <XrayIndividual explanation={explanation} />
 }

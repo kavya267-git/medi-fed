@@ -20,14 +20,22 @@ from typing import Dict, Iterable, List
 import numpy as np
 
 from ml.common.datasets import DatasetUnavailableError, load_local_dataset
+from ml.common.tabular import is_tabular, tabular_schema
+from ml.diabetes.features import DIABETES_BOUNDS
 from ml.ecg.preprocess import ECG_BEAT_LENGTH
-from ml.ehr.features import EHR_FEATURE_NAMES
 
 #: Fewer training records than this cannot train (batch normalisation needs batches of 2+).
 MIN_TRAIN_RECORDS = 8
 MIN_VAL_RECORDS = 1
 #: A feature with a larger share of missing training values fails (KNN imputation needs neighbours).
 MAX_MISSING_SHARE = 0.5
+#: Per-modality exceptions. Screening data often lacks the costlier tests: 2-hour insulin is missing for 49% of
+#: the real PIMA records, so a hospital's share can exceed one half.
+MAX_MISSING_SHARE_BY_MODALITY = {"diabetes": 0.65}
+
+
+def max_missing_share(modality: str) -> float:
+    return MAX_MISSING_SHARE_BY_MODALITY.get(modality, MAX_MISSING_SHARE)
 
 #: (low, high) plausibility bounds per EHR feature, in the units of ml/ehr/features.py.
 EHR_BOUNDS: Dict[str, tuple] = {
@@ -46,11 +54,14 @@ EHR_BOUNDS: Dict[str, tuple] = {
     "prior_admissions_12m": (0, 100),
     "comorbidity_index": (0, 40),
 }
-LABELS = {"ehr": (0, 1), "ecg": (0, 1, 2, 3), "xray": (0, 1)}
+#: Plausibility bounds of each tabular modality's features.
+BOUNDS: Dict[str, Dict[str, tuple]] = {"ehr": EHR_BOUNDS, "diabetes": DIABETES_BOUNDS}
+LABELS = {"ehr": (0, 1), "ecg": (0, 1, 2, 3), "xray": (0, 1), "diabetes": (0, 1)}
 LABEL_NAMES = {
     "ehr": ("no adverse outcome", "adverse outcome"),
     "ecg": ("N", "S", "V", "F"),
     "xray": ("no finding", "finding"),
+    "diabetes": ("no diabetes", "diabetes"),
 }
 
 
@@ -63,14 +74,16 @@ def _labels(modality: str, y: np.ndarray, split: str, problems: List[str]) -> Di
 
 
 def _check_values(modality: str, X: np.ndarray, split: str, problems: List[str]) -> None:
-    if modality == "ehr":
+    if is_tabular(modality):
         missing = np.isnan(X)
-        for i, name in enumerate(EHR_FEATURE_NAMES):
+        bounds = BOUNDS[modality]
+        limit = max_missing_share(modality)
+        for i, name in enumerate(tabular_schema(modality).feature_names):
             column = X[:, i]
             share = float(missing[:, i].mean()) if len(column) else 0.0
-            if split == "train" and share > MAX_MISSING_SHARE:
-                problems.append(f"{split}: '{name}' is missing in {share:.0%} of records (at most {MAX_MISSING_SHARE:.0%})")
-            low, high = EHR_BOUNDS[name]
+            if split == "train" and share > limit:
+                problems.append(f"{split}: '{name}' is missing in {share:.0%} of records (at most {limit:.0%})")
+            low, high = bounds[name]
             present = column[~missing[:, i]]
             outside = int(np.sum((present < low) | (present > high)))
             if outside:
@@ -96,7 +109,7 @@ def check_modality(data_dir: Path, modality: str) -> dict:
     label_counts: Dict[str, int] = {}
     for split in ("train", "val"):
         try:
-            dataset = load_local_dataset(Path(data_dir), modality, split, allow_missing_features=(modality == "ehr"))
+            dataset = load_local_dataset(Path(data_dir), modality, split, allow_missing_features=is_tabular(modality))
         except DatasetUnavailableError:
             problems.append(f"{split}: no file found (expected the layout written by scripts/prepare_real_data.py)")
             continue
@@ -105,7 +118,7 @@ def check_modality(data_dir: Path, modality: str) -> dict:
             continue
         counts[split] = len(dataset)
         X = np.asarray(dataset.X)
-        if modality == "ehr":
+        if is_tabular(modality):
             X = X.astype(np.float64)
         _check_values(modality, X, split, problems)
         labels = _labels(modality, np.asarray(dataset.y), split, problems)

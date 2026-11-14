@@ -15,6 +15,7 @@ from typing import Optional
 import numpy as np
 
 from analytics.explainability import gradcam, occlusion, shapley
+from ml.common.tabular import is_tabular
 
 
 class ExplanationUnavailable(RuntimeError):
@@ -38,7 +39,7 @@ def _prediction_block(probabilities: np.ndarray, class_names) -> dict:
 def explain_ehr_record(
     adapter, weights, x: np.ndarray, background: np.ndarray, feature_meta: list, n_permutations: int = 32, seed: int = 0
 ) -> dict:
-    """Individual explanation: how each feature moved this record's predicted risk."""
+    """Individual explanation: how each feature moved this record's predicted risk (any tabular modality)."""
     output_index = 1  # probability of the positive class
 
     def predict(data: np.ndarray) -> np.ndarray:
@@ -74,7 +75,7 @@ def explain_ehr_record(
     contributions.sort(key=lambda item: abs(item["shap_value"]), reverse=True)
     return {
         "scope": "individual",
-        "modality": "ehr",
+        "modality": adapter.modality,
         "method": method,
         "explained_output": f"Predicted probability of '{adapter.task.class_names[output_index]}'",
         "prediction": _prediction_block(probabilities, adapter.task.class_names),
@@ -178,8 +179,8 @@ def local_global_importance(
     n_permutations: int = 8,
     seed: int = 0,
 ) -> Optional[dict]:
-    """Aggregate feature importance computed inside a hospital node (EHR only)."""
-    if adapter.modality != "ehr" or len(X) == 0 or len(background) == 0:
+    """Aggregate feature importance computed inside a hospital node (tabular modalities only)."""
+    if not is_tabular(adapter.modality) or len(X) == 0 or len(background) == 0:
         return None
     rng = np.random.default_rng(seed)
     records = X[rng.choice(len(X), size=min(max_records, len(X)), replace=False)]
@@ -202,7 +203,7 @@ def local_global_importance(
     }
 
 
-def pool_global_importance(reports: list, feature_meta: list) -> Optional[dict]:
+def pool_global_importance(reports: list, feature_meta: list, modality: str = "ehr") -> Optional[dict]:
     """Combine per-hospital aggregates, weighting each hospital by records explained."""
     reports = [r for r in reports if r]
     if not reports:
@@ -232,7 +233,7 @@ def pool_global_importance(reports: list, feature_meta: list) -> Optional[dict]:
     features.sort(key=lambda item: item["mean_abs_shap"], reverse=True)
     return {
         "scope": "global",
-        "modality": "ehr",
+        "modality": modality,
         "method": reports[0]["method"],
         "features": features,
         "metadata": {

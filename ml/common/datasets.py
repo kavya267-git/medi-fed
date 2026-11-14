@@ -3,9 +3,10 @@
 Every hospital node owns one directory::
 
     <hospital_dir>/
-        ehr/   train.csv  val.csv  manifest.json
-        ecg/   train.npz  val.npz  manifest.json
-        xray/  train.npz  val.npz  manifest.json
+        ehr/        train.csv  val.csv  manifest.json
+        ecg/        train.npz  val.npz  manifest.json
+        xray/       train.npz  val.npz  manifest.json
+        diabetes/   train.csv  val.csv  manifest.json
 
 Only code running *inside the hospital node* reads these files. The
 coordinator is never given this path. The simulated generators and the
@@ -23,8 +24,8 @@ from typing import Optional
 import numpy as np
 import pandas as pd
 
+from ml.common.tabular import is_tabular, tabular_schema
 from ml.common.types import MODALITIES, ArrayDataset
-from ml.ehr.features import EHR_FEATURE_NAMES, EHR_LABEL_COLUMN
 
 SPLITS = ("train", "val")
 
@@ -42,7 +43,7 @@ def modality_dir(hospital_dir: Path, modality: str) -> Path:
 def _split_path(hospital_dir: Path, modality: str, split: str) -> Path:
     if split not in SPLITS:
         raise ValueError(f"Unknown split '{split}'. Expected one of {SPLITS}")
-    extension = "csv" if modality == "ehr" else "npz"
+    extension = "csv" if is_tabular(modality) else "npz"
     return modality_dir(hospital_dir, modality) / f"{split}.{extension}"
 
 
@@ -66,9 +67,10 @@ def save_local_dataset(
     directory.mkdir(parents=True, exist_ok=True)
     for split, (X, y) in (("train", train), ("val", val)):
         path = _split_path(hospital_dir, modality, split)
-        if modality == "ehr":
-            frame = pd.DataFrame(np.asarray(X), columns=EHR_FEATURE_NAMES)
-            frame[EHR_LABEL_COLUMN] = np.asarray(y, dtype=np.int64)
+        if is_tabular(modality):
+            schema = tabular_schema(modality)
+            frame = pd.DataFrame(np.asarray(X), columns=schema.feature_names)
+            frame[schema.label_column] = np.asarray(y, dtype=np.int64)
             frame.to_csv(path, index=False)
         elif modality == "ecg":
             np.savez_compressed(path, signals=np.asarray(X, dtype=np.float32), labels=np.asarray(y, dtype=np.int64))
@@ -89,7 +91,7 @@ def save_local_dataset(
 def load_local_dataset(
     hospital_dir: Path, modality: str, split: str, allow_missing_features: bool = False
 ) -> ArrayDataset:
-    """Load one split. EHR feature gaps (NaN) are refused unless ``allow_missing_features``: only the hospital
+    """Load one split. Gaps (NaN) in a tabular modality's features are refused unless ``allow_missing_features``: only the hospital
     node's training code allows them, because it fills them in (``ml.ehr.imputation``) before use."""
     path = _split_path(hospital_dir, modality, split)
     if not path.exists():
@@ -101,18 +103,20 @@ def load_local_dataset(
     source = manifest.get("source", "unknown")
     description = manifest.get("description", "")
 
-    if modality == "ehr":
+    if is_tabular(modality):
+        schema = tabular_schema(modality)
+        names, label = schema.feature_names, schema.label_column
         frame = pd.read_csv(path)
-        missing = [c for c in EHR_FEATURE_NAMES + [EHR_LABEL_COLUMN] if c not in frame.columns]
+        missing = [c for c in names + [label] if c not in frame.columns]
         if missing:
             raise ValueError(f"{path} is missing columns: {missing}")
-        if frame[EHR_LABEL_COLUMN].isna().any():
-            raise ValueError(f"{path} contains missing values in '{EHR_LABEL_COLUMN}'; drop those rows during preparation")
-        if not allow_missing_features and frame[EHR_FEATURE_NAMES].isna().any().any():
+        if frame[label].isna().any():
+            raise ValueError(f"{path} contains missing values in '{label}'; drop those rows during preparation")
+        if not allow_missing_features and frame[names].isna().any().any():
             raise ValueError(f"{path} contains missing values; impute or drop them during preparation")
-        X = frame[EHR_FEATURE_NAMES].to_numpy(dtype=np.float32)
-        y = frame[EHR_LABEL_COLUMN].to_numpy(dtype=np.int64)
-        return ArrayDataset(X, y, modality, split, source, list(EHR_FEATURE_NAMES), description)
+        X = frame[names].to_numpy(dtype=np.float32)
+        y = frame[label].to_numpy(dtype=np.int64)
+        return ArrayDataset(X, y, modality, split, source, list(names), description)
 
     with np.load(path, allow_pickle=False) as archive:
         key = "signals" if modality == "ecg" else "images"

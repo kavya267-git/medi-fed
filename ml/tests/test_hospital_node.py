@@ -57,7 +57,7 @@ def test_join_shares_counts_only(hospital_dir):
     transport = RecordingTransport("ehr")
     HospitalNode("hospital_a", hospital_dir, transport, "numpy-reference").join("r1")
     summary = transport.calls[0][1]
-    assert set(summary) == {"ehr", "ecg", "xray"}
+    assert set(summary) == {"ehr", "ecg", "xray", "diabetes"}
     assert set(summary["ehr"]) == {"source", "simulated", "description", "train_samples", "val_samples"}
 
 

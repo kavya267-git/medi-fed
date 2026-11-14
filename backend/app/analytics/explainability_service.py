@@ -32,9 +32,9 @@ from app.services.audit_service import AuditService
 from app.services.model_registry import STATUS_INITIAL, ModelRegistry
 from app.utils.errors import NotFoundError, ValidationFailed
 from app.utils.time import utc_now_iso
+from ml.common.tabular import is_tabular, tabular_schema
 from ml.common.types import MODALITIES
 from ml.ecg.preprocess import ECG_SAMPLE_RATE_HZ
-from ml.ehr.features import feature_metadata
 from ml.registry import get_adapter
 from ml.simulation.hospitals import generate_reference_cases
 
@@ -126,9 +126,9 @@ class ExplainabilityService:
             return response
 
         if scope == "global":
-            if modality != "ehr":
+            if not is_tabular(modality):
                 response["reason"] = (
-                    "Global feature importance is shown for structured (EHR) features only. "
+                    "Global feature importance is shown for structured (EHR and diabetes) features only. "
                     "For signals and images an overall ranking of inputs is not meaningful - "
                     "use an individual explanation instead."
                 )
@@ -162,9 +162,9 @@ class ExplainabilityService:
         data = self._load_cases(modality)
         weights = self.registry.load_weights(modality, model["version"])
         try:
-            if modality == "ehr":
+            if is_tabular(modality):
                 explanation = explain_ehr_record(
-                    adapter, weights, data["X"][index], data["background"], feature_metadata()
+                    adapter, weights, data["X"][index], data["background"], tabular_schema(modality).feature_metadata()
                 )
             elif modality == "ecg":
                 explanation = explain_ecg_beat(adapter, weights, data["X"][index], ECG_SAMPLE_RATE_HZ)

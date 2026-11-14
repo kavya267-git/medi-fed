@@ -37,6 +37,8 @@
   --color-ecg-soft: #f8e7ed;
   --color-xray: #2a7b99;
   --color-xray-soft: #e2f1f6;
+  --color-diabetes: #6a4aa8;
+  --color-diabetes-soft: #efeaf8;
 
   /* Surveillance status scale. */
   --color-ok: #2a7a57;

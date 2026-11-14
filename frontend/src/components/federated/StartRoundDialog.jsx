@@ -46,7 +46,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
         min_participants: Number(minParticipants),
         auto_aggregate: true,
         deadline_seconds: Number(deadlineSeconds),
-        simulated_missing_rate: modality === 'ehr' ? Number(missingPercent) / 100 : 0,
+        simulated_missing_rate: modality === 'ehr' || modality === 'diabetes' ? Number(missingPercent) / 100 : 0,
         differential_privacy: {
           enabled: dpEnabled,
           clip_norm: Number(clipNorm),
@@ -188,11 +188,11 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
           </Field>
         </div>
 
-        {modality === 'ehr' ? (
+        {modality === 'ehr' || modality === 'diabetes' ? (
           <Field
             label="Simulated missing values (%)"
             htmlFor="round-missing"
-            hint="Test setting. Each hospital blanks this share of its EHR values at random and fills them in by nearest-neighbour imputation, fitted on its own training records only. 0 = off."
+            hint="Test setting. Each hospital blanks this share of its values at random and fills them in by nearest-neighbour imputation, fitted on its own training records only. 0 = off."
           >
             <input
               id="round-missing"

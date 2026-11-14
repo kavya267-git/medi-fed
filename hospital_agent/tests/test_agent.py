@@ -111,3 +111,33 @@ def test_take_part_switch_off_declines_rounds(tmp_path):
     runner.local_participation = False
     runner.poll_once()
     assert ("failure", "ecg-r0001", "declined") in runner.transport.calls
+
+
+def test_predict_with_the_saved_global_model_on_this_computer(agent_home, tmp_path, monkeypatch):
+    """The agent predicts with the model it kept from a round, fills gaps from its own records, sends nothing."""
+    from ml.common.types import TrainConfig
+    from ml.common.weights import weights_to_bytes
+    from ml.registry import get_adapter
+    from ml.simulation.hospitals import SIMULATED_HOSPITALS, generate_hospital_data
+    from ml.training.local_trainer import train_on_local_data
+    from ml.training.model_store import save_global_model
+
+    monkeypatch.setenv("ML_BACKEND", "numpy-reference")
+    generate_hospital_data(tmp_path / "data", SIMULATED_HOSPITALS[1], seed=2, modalities=["diabetes"])
+    folder = tmp_path / "data" / SIMULATED_HOSPITALS[1].hospital_id
+    session = AgentSession(log=lambda line: None)
+    assert session.saved_models() == {}
+    with pytest.raises(AgentError, match="No global diabetes model"):
+        session.predictor("diabetes", folder)
+
+    adapter = get_adapter("diabetes", "numpy-reference")
+    weights = train_on_local_data(folder, "diabetes", adapter.init_weights(0), TrainConfig(2, 32, 0.01, 0), "numpy-reference").weights
+    save_global_model(session.models_dir, "diabetes", weights_to_bytes(weights), {"architecture": adapter.architecture})
+    assert set(session.saved_models()) == {"diabetes"}
+    predictor = session.predictor("diabetes", folder)
+    assert session.predictor("diabetes", folder) is predictor  # reused until the model or folder changes
+    result = predictor.predict_one({"glucose": 150, "bmi": 33, "age": 45, "pregnancies": 1, "pedigree": 0.5, "diastolic_bp": 75})
+    assert 0 <= result["probability"] <= 1 and {i["feature"] for i in result["inputs"] if i["estimated"]} == {
+        "skin_thickness",
+        "insulin",
+    }

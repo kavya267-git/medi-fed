@@ -33,7 +33,7 @@ from app.utils.time import utc_now_iso
 from ml.common.types import MODALITIES
 
 STATUSES = ("PENDING", "APPROVED", "REJECTED", "REVOKED")
-MODALITY_LABELS = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray"}
+MODALITY_LABELS = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray", "diabetes": "Diabetes"}
 CONFIRMATION_TEXT = "I confirm we will not upload patient data; training runs on our own machine."
 MAX_RECORDS_PER_MODALITY = 10_000_000
 _EMAIL = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")

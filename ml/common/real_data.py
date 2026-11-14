@@ -1,8 +1,9 @@
 """Turn real datasets into the per-hospital layout used by the hospital nodes.
 
-Nothing here downloads data. MIMIC-IV, MIT-BIH and NIH ChestX-ray14 each have
-their own access terms; obtain them yourself and point these functions at the
-files. Each function reads a commonly used export of the dataset, splits it
+Nothing here downloads data, except ``fetch_pima``: the PIMA Indians Diabetes
+Database is public (OpenML dataset 37) and is downloaded once and checked against
+its published MD5. MIMIC-IV, MIT-BIH and NIH ChestX-ray14 each have their own
+access terms; obtain them yourself and point these functions at the files. Each function reads a commonly used export of the dataset, splits it
 into hospital partitions, and writes ``<data_root>/<hospital_id>/<modality>/``.
 
 Records that belong to the same patient are always kept together - in one
@@ -12,6 +13,10 @@ identifier is available.
 
 from __future__ import annotations
 
+import csv
+import hashlib
+import io
+import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional, Sequence
 
@@ -19,6 +24,7 @@ import numpy as np
 import pandas as pd
 
 from ml.common.datasets import save_local_dataset
+from ml.diabetes.features import DIABETES_FEATURE_NAMES, DIABETES_LABEL_COLUMN, zeros_to_missing
 from ml.ecg.preprocess import ECG_BEAT_LENGTH
 from ml.ehr.features import EHR_FEATURE_NAMES, EHR_LABEL_COLUMN
 
@@ -260,6 +266,127 @@ def prepare_chestxray14(
         hospital_ids,
         source,
         f"NIH ChestX-ray14, {image_size}x{image_size} greyscale, finding vs no finding, grouped by patient.",
+        seed,
+        alpha,
+        val_fraction,
+    )
+
+
+# ---------------------------------------------------------------------------- diabetes
+
+#: OpenML dataset 37 ("diabetes"), the UCI PIMA file, and its published MD5.
+PIMA_URL = "https://openml.org/data/v1/download/37/diabetes.arff"
+PIMA_MD5 = "3cbaa3e54586aa88cf6aacb4033e4470"
+#: PIMA's short column names, in file order, as the diabetes feature names.
+PIMA_COLUMNS = dict(
+    zip(["preg", "plas", "pres", "skin", "insu", "mass", "pedi", "age"], DIABETES_FEATURE_NAMES)
+)
+
+
+def fetch_pima(path: Path) -> Path:
+    """The PIMA ARFF file at ``path``, downloaded once if absent, always checked against the published MD5."""
+    path = Path(path)
+    if not path.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        with urllib.request.urlopen(PIMA_URL, timeout=60) as response:
+            path.write_bytes(response.read())
+    digest = hashlib.md5(path.read_bytes()).hexdigest()
+    if digest != PIMA_MD5:
+        raise ValueError(f"{path}: MD5 {digest} does not match the published {PIMA_MD5}")
+    return path
+
+
+def read_pima_arff(path: Path) -> tuple:
+    """Features in ``DIABETES_FEATURE_NAMES`` order with 0 = "not measured" turned into gaps, and labels
+    (1 = tested_positive)."""
+    text = Path(path).read_text(encoding="utf-8")
+    body = text.split("@data", 1)[1] if "@data" in text else text.split("@DATA", 1)[1]
+    rows = [r for r in csv.reader(io.StringIO(body)) if r and not r[0].startswith("%")]
+    X = np.array([[float(v) for v in r[:8]] for r in rows], dtype=np.float64)
+    labels = [r[8].strip() for r in rows]
+    if set(labels) != {"tested_negative", "tested_positive"}:
+        raise ValueError(f"Unexpected class values: {sorted(set(labels))}")
+    y = np.array([1 if v == "tested_positive" else 0 for v in labels], dtype=np.int64)
+    return zeros_to_missing(X), y
+
+
+def prepare_pima(
+    arff_path: Path,
+    data_root: Path,
+    hospital_ids: Sequence[str] = DEFAULT_HOSPITALS,
+    seed: int = 0,
+    alpha: Optional[float] = 1.0,
+    val_fraction: float = 0.25,
+) -> Dict[str, dict]:
+    """Split the real PIMA records across the hospitals (Dirichlet label skew), gaps kept for each node's KNN
+    imputation. Each record is one patient, so no patient is in two hospitals or on both sides of a split."""
+    X, y = read_pima_arff(fetch_pima(arff_path))
+    gaps = int(np.isnan(X).sum())
+    return _write_partitions(
+        data_root,
+        "diabetes",
+        X.astype(np.float32),
+        y,
+        np.arange(len(y)),
+        hospital_ids,
+        "pima",
+        (
+            "PIMA Indians Diabetes Database (NIDDK; OpenML 37), real records. Zeros in glucose, blood pressure, "
+            f"skin fold, insulin and BMI mean 'not measured': {gaps} such gap(s) kept for KNN imputation at the node."
+        ),
+        seed,
+        alpha,
+        val_fraction,
+    )
+
+
+def prepare_diabetes_csv(
+    csv_path: Path,
+    data_root: Path,
+    hospital_ids: Sequence[str] = DEFAULT_HOSPITALS,
+    column_mapping: Optional[Dict[str, str]] = None,
+    label_column: str = DIABETES_LABEL_COLUMN,
+    source: str = "hospital-csv",
+    seed: int = 0,
+    alpha: Optional[float] = 1.0,
+    val_fraction: float = 0.25,
+    zero_means_missing: bool = False,
+) -> Dict[str, dict]:
+    """Partition a CSV with the eight diabetes measurements (``ml.diabetes.features``) and a 0/1 label.
+
+    ``column_mapping`` renames your columns (``{"your_column": "feature_name"}``). Rows without a label are
+    dropped; gaps in the measurements are kept for KNN imputation at the node. With ``zero_means_missing``, a 0
+    in glucose, blood pressure, skin fold, insulin or BMI is treated as "not measured", as in the PIMA file.
+    """
+    frame = pd.read_csv(csv_path)
+    if column_mapping:
+        frame = frame.rename(columns=column_mapping)
+    if label_column != DIABETES_LABEL_COLUMN:
+        frame = frame.rename(columns={label_column: DIABETES_LABEL_COLUMN})
+    missing = [c for c in DIABETES_FEATURE_NAMES + [DIABETES_LABEL_COLUMN] if c not in frame.columns]
+    if missing:
+        raise ValueError(f"{csv_path} is missing required columns: {missing}")
+    before = len(frame)
+    frame = frame[DIABETES_FEATURE_NAMES + [DIABETES_LABEL_COLUMN]].dropna(subset=[DIABETES_LABEL_COLUMN])
+    frame = frame.reset_index(drop=True)
+    labels = frame[DIABETES_LABEL_COLUMN].to_numpy()
+    if not set(np.unique(labels)) <= {0, 1}:
+        raise ValueError("The diabetes label must be binary (0 or 1)")
+    X = frame[DIABETES_FEATURE_NAMES].to_numpy(dtype=np.float64)
+    if zero_means_missing:
+        X = zeros_to_missing(X)
+    return _write_partitions(
+        data_root,
+        "diabetes",
+        X.astype(np.float32),
+        labels.astype(np.int64),
+        np.arange(len(frame)),
+        hospital_ids,
+        source,
+        (
+            f"Prepared from {Path(csv_path).name}; {before - len(frame)} row(s) without a label dropped; "
+            f"{int(np.isnan(X).sum())} missing value(s) kept for KNN imputation at the hospital node."
+        ),
         seed,
         alpha,
         val_fraction,

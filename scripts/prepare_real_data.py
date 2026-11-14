@@ -12,6 +12,14 @@ ECG (MIT-BIH heartbeat CSV export)::
 
     python scripts/prepare_real_data.py ecg --csv mitbih_train.csv mitbih_test.csv
 
+Diabetes: the real PIMA Indians Diabetes Database (downloaded once to data/raw/pima/, MD5-checked)::
+
+    python scripts/prepare_real_data.py diabetes --pima
+
+or a CSV with the eight measurements in ml/diabetes/features.py and a 0/1 label::
+
+    python scripts/prepare_real_data.py diabetes --csv patients.csv --mapping '{"Glucose": "glucose"}'
+
 X-ray (NIH ChestX-ray14)::
 
     python scripts/prepare_real_data.py xray --entries Data_Entry_2017.csv --images images/ --size 224
@@ -30,8 +38,10 @@ sys.path.insert(0, str(ROOT))
 from ml.common.real_data import (  # noqa: E402
     DEFAULT_HOSPITALS,
     prepare_chestxray14,
+    prepare_diabetes_csv,
     prepare_ecg_heartbeat_csv,
     prepare_ehr_csv,
+    prepare_pima,
 )
 
 
@@ -73,6 +83,25 @@ def main() -> None:
     xray.add_argument("--limit", type=int, default=None)
     xray.add_argument("--source", default="nih-chestxray14")
 
+    diabetes = sub.add_parser("diabetes")
+    source = diabetes.add_mutually_exclusive_group(required=True)
+    source.add_argument(
+        "--pima",
+        nargs="?",
+        const=ROOT / "data" / "raw" / "pima" / "diabetes.arff",
+        type=Path,
+        help="Use the real PIMA file (path optional; downloaded there once if absent, MD5-checked)",
+    )
+    source.add_argument("--csv", type=Path)
+    diabetes.add_argument("--mapping", type=json.loads, default=None, help="JSON object: your column -> feature name")
+    diabetes.add_argument("--label-column", default="label")
+    diabetes.add_argument("--source", default="hospital-csv")
+    diabetes.add_argument(
+        "--zero-means-missing",
+        action="store_true",
+        help="Treat 0 in glucose, blood pressure, skin fold, insulin or BMI as not measured (the PIMA convention)",
+    )
+
     args = parser.parse_args()
     common = dict(
         data_root=args.data_root,
@@ -92,6 +121,17 @@ def main() -> None:
         )
     elif args.modality == "ecg":
         manifests = prepare_ecg_heartbeat_csv(args.csv, source=args.source, **common)
+    elif args.modality == "diabetes" and args.pima:
+        manifests = prepare_pima(args.pima, **common)
+    elif args.modality == "diabetes":
+        manifests = prepare_diabetes_csv(
+            args.csv,
+            column_mapping=args.mapping,
+            label_column=args.label_column,
+            source=args.source,
+            zero_means_missing=args.zero_means_missing,
+            **common,
+        )
     else:
         manifests = prepare_chestxray14(
             args.entries, args.images, image_size=args.size, limit=args.limit, source=args.source, **common

@@ -60,7 +60,7 @@ function Environment() {
               </tr>
             </thead>
             <tbody>
-              {MODALITY_ORDER.map((modality) => {
+              {MODALITY_ORDER.filter((modality) => config.model_backends[modality]).map((modality) => {
                 const backend = config.model_backends[modality]
                 return (
                   <tr key={modality}>

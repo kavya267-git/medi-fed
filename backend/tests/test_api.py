@@ -16,7 +16,7 @@ def test_health_and_public_config(client):
     assert config["demo_mode"] is True
     assert config["auth_provider"] == "demo"
     assert config["simulated_label"] == "SIMULATED / DEMONSTRATION DATA"
-    assert set(config["model_backends"]) == {"ehr", "ecg", "xray"}
+    assert set(config["model_backends"]) == {"ehr", "ecg", "xray", "diabetes"}
     assert config["model_backends"]["ehr"]["target_architecture"] == "TabNet"
     accounts = {a["email"]: a for a in config["demo_accounts"]}
     assert {a["role"] for a in accounts.values()} == {
@@ -81,7 +81,7 @@ def test_hospitals_listing(client, viewer):
     assert [h["id"] for h in hospitals] == ["hospital_a", "hospital_b", "hospital_c", "hospital_d"]
     first = hospitals[0]
     assert first["online"] is True and first["is_simulated"] is True
-    assert set(first["modalities"]) == {"ehr", "ecg", "xray"}
+    assert set(first["modalities"]) == {"ehr", "ecg", "xray", "diabetes"}
     assert first["data_summary"]["ehr"]["train_samples"] > 0
     assert first["current_round"] is None and first["rounds_completed"] == 0
     # Nothing patient-level is exposed: only counts and provenance.
@@ -298,11 +298,11 @@ def test_cancel_marks_round_failed(client, coordinator, monkeypatch):
 # ------------------------------------------------------------------- models
 def test_models_before_training(client, viewer):
     models = client.get("/api/models", headers=viewer).json()
-    assert [m["id"] for m in models] == ["ehr", "ecg", "xray"]
+    assert [m["id"] for m in models] == ["ehr", "ecg", "xray", "diabetes"]
     for model in models:
         assert model["current_version"] == 0 and model["training_status"] == "NOT_TRAINED"
         assert model["latest_metrics"] is None  # no invented numbers before a round has run
-    assert [m["target_architecture"] for m in models] == ["TabNet", "CNN-BiLSTM", "EfficientNet-B3"]
+    assert [m["target_architecture"] for m in models] == ["TabNet", "CNN-BiLSTM", "EfficientNet-B3", "MLP"]
     metrics = client.get("/api/models/ecg/metrics", headers=viewer).json()
     assert metrics["series"] == [] and metrics["latest"] is None
     assert client.get("/api/models/mri", headers=viewer).status_code == 404

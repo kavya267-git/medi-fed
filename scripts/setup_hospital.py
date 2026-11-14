@@ -89,7 +89,7 @@ def prepare_data(hospital_id: str, config: dict, args: argparse.Namespace, say) 
         summary = local_data_summary(data_dir)
         if not summary:
             sys.exit(
-                f"No prepared data in {data_dir}. It should contain ehr/, ecg/ or xray/ folders with a "
+                f"No prepared data in {data_dir}. It should contain ehr/, ecg/, xray/ or diabetes/ folders with a "
                 "manifest.json each, as written by scripts/prepare_real_data.py."
             )
         for modality, entry in sorted(summary.items()):

@@ -8,7 +8,7 @@ One ``HospitalNode`` owns one hospital's data directory. During a round it:
 4. optionally clips and noises the update (differential privacy prototype);
 5. sends back *only* model weights, a sample count and summary metrics;
 6. later downloads the aggregated model, evaluates it on its local held-out
-   split and returns a confusion matrix (plus, for EHR, aggregate feature
+   split and returns a confusion matrix (plus, for EHR and diabetes, aggregate feature
    importance).
 
 Raw records never leave this class: nothing passed to the transport contains
@@ -26,6 +26,7 @@ import numpy as np
 from analytics.explainability.service import local_global_importance
 from analytics.privacy.dp import DPConfig, privatize_update, update_norm
 from ml.common.datasets import local_data_summary
+from ml.common.tabular import is_tabular
 from ml.common.types import TrainConfig
 from ml.common.weights import architecture_signature, weights_from_bytes, weights_to_bytes
 from ml.ehr.imputation import MissingnessConfig
@@ -142,7 +143,7 @@ class HospitalNode:
         self.last_evaluation = evaluation
 
         explanation = None
-        if modality == "ehr" and round_info.get("explainability", {}).get("global_importance", True):
+        if is_tabular(modality) and round_info.get("explainability", {}).get("global_importance", True):
             train, validation, _ = load_training_splits(self.data_dir, modality, missingness)
             explanation = local_global_importance(
                 adapter,

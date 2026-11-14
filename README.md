@@ -22,7 +22,8 @@ Hospital D ── local training ──┘    (weights, sample counts, summary m
 | Area | What it does |
 | --- | --- |
 | Federated learning | Round lifecycle (created → waiting → training → receiving updates → aggregating → evaluating → completed / failed), update validation, FedAvg weighted by sample count, federated evaluation, model versioning |
-| Modalities | EHR → TabNet, ECG → CNN-BiLSTM, X-ray → EfficientNet-B3. Separate registries and aggregation; incompatible architectures are never averaged |
+| Modalities | EHR → TabNet, ECG → CNN-BiLSTM, X-ray → EfficientNet-B3, diabetes (real PIMA records) → small neural network. Separate registries and aggregation; incompatible architectures are never averaged |
+| Prediction | The hospital agent's **Predict** window uses the global model the hospital kept on a new patient (EHR, diabetes), with the reasons (Shapley values) - on the hospital's computer, nothing sent ([docs/prediction.md](docs/prediction.md)) |
 | Hospitals | Four nodes, each with its own data directory. Run in-process for a demo or as separate processes over HTTP |
 | Surveillance | Regional weekly counts from hospital-reported totals with small-count suppression, choropleth map, hotspot *candidates* (z-score), never "outbreaks" |
 | Forecasting | Naive, seasonal and autoregressive models compared by rolling-origin validation (MAE, RMSE), forecast with 80% / 95% intervals |
@@ -101,6 +102,7 @@ The PyTorch model tests are skipped automatically when PyTorch is not installed.
 - [docs/architecture.md](docs/architecture.md) - components, data boundaries, round lifecycle, database
 - [docs/design-changes.md](docs/design-changes.md) - where the build differs from the approved plan (React instead of Flutter, our own coordinator instead of Flower) and why
 - [docs/api.md](docs/api.md) - every endpoint
+- [docs/prediction.md](docs/prediction.md) - the diabetes model (real PIMA records) and predicting for new patients in the hospital agent
 - [docs/resource-planning.md](docs/resource-planning.md) - how the hospital bed projection is calculated, with a worked example
 - [docs/permissions.md](docs/permissions.md) - roles (including health officers, researchers and hospital managers), what each may do, and the demo accounts
 - [data/boundaries/README.md](data/boundaries/README.md) - the Karnataka district boundaries (geoBoundaries, ODbL 1.0) and how to load them

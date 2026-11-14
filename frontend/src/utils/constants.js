@@ -4,8 +4,9 @@ export const MODALITIES = {
   ehr: { id: 'ehr', label: 'EHR', name: 'Electronic health records', target: 'TabNet', color: '#4353b3', soft: 'bg-ehr-soft text-ehr' },
   ecg: { id: 'ecg', label: 'ECG', name: 'Electrocardiogram', target: 'CNN-BiLSTM', color: '#b03a60', soft: 'bg-ecg-soft text-ecg' },
   xray: { id: 'xray', label: 'X-ray', name: 'Chest X-ray', target: 'EfficientNet-B3', color: '#2a7b99', soft: 'bg-xray-soft text-xray' },
+  diabetes: { id: 'diabetes', label: 'Diabetes', name: 'Diabetes screening', target: 'MLP', color: '#6a4aa8', soft: 'bg-diabetes-soft text-diabetes' },
 }
-export const MODALITY_ORDER = ['ehr', 'ecg', 'xray']
+export const MODALITY_ORDER = ['ehr', 'ecg', 'xray', 'diabetes']
 
 /** The round lifecycle, in order. FAILED can follow any step. */
 export const ROUND_STEPS = [
@@ -149,4 +150,5 @@ export const F1_KIND = {
   ehr: { short: 'adverse outcome', full: 'F1 of the positive class (adverse outcome), at the 0.5 threshold' },
   xray: { short: 'finding present', full: 'F1 of the positive class (finding present), at the 0.5 threshold' },
   ecg: { short: 'macro average', full: 'F1 averaged over the four heartbeat classes (macro average)' },
+  diabetes: { short: 'diabetes', full: 'F1 of the positive class (diabetes), at the 0.5 threshold' },
 }
