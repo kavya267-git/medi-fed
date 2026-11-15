@@ -9,7 +9,7 @@ import { AsyncView, EmptyState } from '../components/ui/StateViews'
 import { useApi } from '../hooks/useApi'
 import { api } from '../services/endpoints'
 import { MODALITIES, MODALITY_ORDER, availabilityLabel } from '../utils/constants'
-import { formatDateTime, formatNumber, timeAgo } from '../utils/format'
+import { DASH, formatDateTime, formatNumber, timeAgo } from '../utils/format'
 
 export function DataSummary({ hospital }) {
   const rows = MODALITY_ORDER.filter((m) => hospital.data_summary[m])
@@ -25,6 +25,7 @@ export function DataSummary({ hospital }) {
             <Th>Source</Th>
             <Th align="right">Training records</Th>
             <Th align="right">Held-out records</Th>
+            <Th>Inputs recorded</Th>
           </tr>
         </thead>
         <tbody>
@@ -46,6 +47,18 @@ export function DataSummary({ hospital }) {
                 </Td>
                 <Td align="right">{formatNumber(summary.train_samples)}</Td>
                 <Td align="right">{formatNumber(summary.val_samples)}</Td>
+                <Td>
+                  {summary.inputs_total ? (
+                    <span title={summary.not_recorded?.length ? `Not recorded: ${summary.not_recorded.join(', ')}` : undefined}>
+                      {summary.inputs_recorded} of {summary.inputs_total}
+                      {summary.not_recorded?.length ? (
+                        <span className="text-muted"> (not recorded: {summary.not_recorded.join(', ')})</span>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <span className="text-muted">{DASH}</span>
+                  )}
+                </Td>
               </tr>
             )
           })}

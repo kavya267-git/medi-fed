@@ -58,7 +58,12 @@ def test_join_shares_counts_only(hospital_dir):
     HospitalNode("hospital_a", hospital_dir, transport, "numpy-reference").join("r1")
     summary = transport.calls[0][1]
     assert set(summary) == {"ehr", "ecg", "xray", "diabetes"}
-    assert set(summary["ehr"]) == {"source", "simulated", "description", "train_samples", "val_samples"}
+    # Counts, provenance and which inputs are recorded (input names) - never values.
+    assert set(summary["ehr"]) == {
+        "source", "simulated", "description", "train_samples", "val_samples",
+        "inputs_total", "inputs_recorded", "not_recorded",
+    }
+    assert set(summary["ecg"]) == {"source", "simulated", "description", "train_samples", "val_samples"}
 
 
 def test_update_contains_only_weights_counts_and_summary_metrics(hospital_dir):

@@ -100,7 +100,8 @@ def test_data_check_report_and_logs_never_carry_the_token(tmp_path):
     runner._check_and_report(local_data_summary(runner.data_dir))
     kind, report = runner.transport.calls[0]
     assert kind == "check" and report["ecg"]["passed"] is True
-    assert set(report["ecg"]) == {"passed", "train_records", "val_records", "label_counts", "problems"}
+    assert set(report["ecg"]) == {"passed", "train_records", "val_records", "label_counts", "problems", "coverage"}
+    assert report["ecg"]["coverage"] is None  # only tabular data has input coverage
     assert runner.name == "Test City Hospital"
     assert lines and not any(TOKEN in line for line in lines)
 

@@ -158,3 +158,72 @@ def test_saved_mapping_is_reused_only_for_matching_headings(tmp_path):
     assert isinstance(again, ColumnMapping) and again.male_values == ["M"] and again.features == mapping.features
     assert load_mapping(tmp_path, "ehr", ["something", "else"]) is None
     assert load_mapping(tmp_path, "diabetes") is None
+
+
+def test_word_pieces_and_spelling_variants_are_matched_and_marked_for_checking():
+    columns = ["Patient_ID", "AGE_YRS", "Sex", "HR_BPM", "BP Systolic (mmHg)", "Resp. Rate", "Body Temp", "SpO2 %",
+               "WBC x10^9/L", "S.Creatnine", "Lactic Acid", "Blood Glucose (mg/dL)", "HGB g/dL", "CCI", "Mortality"]
+    mapping = suggest_mapping("ehr", columns)
+    expected = {"age": "AGE_YRS", "heart_rate": "HR_BPM", "systolic_bp": "BP Systolic (mmHg)",
+                "resp_rate": "Resp. Rate", "temperature_c": "Body Temp", "spo2": "SpO2 %", "wbc": "WBC x10^9/L",
+                "creatinine": "S.Creatnine", "lactate": "Lactic Acid", "glucose": "Blood Glucose (mg/dL)",
+                "hemoglobin": "HGB g/dL", "comorbidity_index": "CCI"}
+    for name, column in expected.items():
+        assert mapping.features[name] == column, name
+    assert mapping.label == "Mortality" and mapping.group == "Patient_ID"
+    assert mapping.reasons["heart_rate"] == "matched by name"
+    assert "check" in mapping.reasons["creatinine"]  # a spelling variant is never presented as certain
+
+
+def test_coded_headings_are_guessed_from_their_values():
+    frame = messy_ehr(200).rename(columns={"Pulse": "obs_01", "SBP": "obs_02", "RR": "obs_03", "O2 Sat": "obs_04",
+                                           "Hb": "obs_05"})
+    mapping = suggest_mapping("ehr", frame.columns, frame)
+    assert mapping.features["heart_rate"] == "obs_01" and mapping.features["systolic_bp"] == "obs_02"
+    assert mapping.features["resp_rate"] == "obs_03" and mapping.features["spo2"] == "obs_04"
+    assert mapping.features["hemoglobin"] == "obs_05"
+    assert all(mapping.reasons[n].startswith("guessed from the values") for n in
+               ("heart_rate", "systolic_bp", "resp_rate", "spo2", "hemoglobin"))
+    # Without the values there is nothing to go on: those inputs stay unmatched rather than guessed.
+    blind = suggest_mapping("ehr", frame.columns)
+    assert blind.features["heart_rate"] is None
+
+
+def test_strong_matches_win_over_weak_ones():
+    # "Glucose tolerance" only contains a common word; "Glucose" is an exact name and must get the input.
+    mapping = suggest_mapping("diabetes", ["Glucose tolerance note", "Glucose", "BMI", "Outcome"])
+    assert mapping.features["glucose"] == "Glucose" and mapping.reasons["glucose"] == "matched by name"
+
+
+def test_hospitals_with_fewer_inputs_can_join_and_say_what_they_record(tmp_path):
+    from ml.common.datasets import local_data_summary
+
+    frame = messy_ehr(160)
+    frame["Hb"] = np.where(np.arange(len(frame)) % 5 == 0, frame["Hb"], np.nan)  # haemoglobin in 20% of rows only
+    mapping = suggest_mapping("ehr", frame.columns, frame)
+    mapping.conversions = ["temperature_f_to_c", "glucose_mmol_to_mg"]
+    report = inspect_export(frame, mapping)
+    assert report["mostly_empty"] == {"hemoglobin": pytest.approx(0.2)}
+    result = import_export(frame, mapping, tmp_path / "h")
+    assert set(result["report"]["filled_with_reference"]) == {"lactate", "hemoglobin"}
+    check = check_modality(tmp_path / "h", "ehr")
+    assert check["passed"], check["problems"]
+    assert check["coverage"] == {"inputs_total": 14, "inputs_recorded": 12, "not_recorded": ["lactate", "hemoglobin"]}
+    summary = local_data_summary(tmp_path / "h")["ehr"]
+    assert summary["inputs_recorded"] == 12 and summary["not_recorded"] == ["lactate", "hemoglobin"]
+
+
+def test_full_records_report_full_coverage(tmp_path):
+    X, y = simulate_diabetes(80, np.random.default_rng(2), DiabetesProfile(unmeasured=0.3))
+    frame = pd.DataFrame(X, columns=DIABETES_FEATURE_NAMES)
+    frame["label"] = y
+    mapping = suggest_mapping("diabetes", frame.columns)
+    import_export(frame, mapping, tmp_path / "d")
+    assert check_modality(tmp_path / "d", "diabetes")["coverage"]["not_recorded"] == []
+
+
+def test_impossible_zeros_are_detected_in_diabetes_exports():
+    frame = pd.DataFrame({"Glucose": [0, 120, 140, 99], "BMI": [30, 0, 28, 33], "Age": [40, 50, 60, 33],
+                          "Outcome": [0, 1, 1, 0]})
+    report = inspect_export(frame, suggest_mapping("diabetes", frame.columns))
+    assert report["impossible_zeros"] == ["glucose", "bmi"]

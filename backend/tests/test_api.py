@@ -85,7 +85,10 @@ def test_hospitals_listing(client, viewer):
     assert first["data_summary"]["ehr"]["train_samples"] > 0
     assert first["current_round"] is None and first["rounds_completed"] == 0
     # Nothing patient-level is exposed: only counts and provenance.
-    assert set(first["data_summary"]["ehr"]) <= {"source", "simulated", "description", "train_samples", "val_samples"}
+    assert set(first["data_summary"]["ehr"]) <= {
+        "source", "simulated", "description", "train_samples", "val_samples",
+        "inputs_total", "inputs_recorded", "not_recorded",
+    }
 
 
 def test_hospital_detail_metrics_and_404(client, viewer):

@@ -15,12 +15,12 @@ kPa). They are not clinical reference ranges.
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, List, Optional
 
 import numpy as np
 
 from ml.common.datasets import DatasetUnavailableError, load_local_dataset
-from ml.common.tabular import is_tabular, tabular_schema
+from ml.common.tabular import input_coverage, is_tabular, tabular_schema
 from ml.diabetes.features import DIABETES_BOUNDS
 from ml.ecg.preprocess import ECG_BEAT_LENGTH
 
@@ -107,6 +107,7 @@ def check_modality(data_dir: Path, modality: str) -> dict:
     problems: List[str] = []
     counts = {"train": 0, "val": 0}
     label_counts: Dict[str, int] = {}
+    coverage: Optional[dict] = None
     for split in ("train", "val"):
         try:
             dataset = load_local_dataset(Path(data_dir), modality, split, allow_missing_features=is_tabular(modality))
@@ -120,6 +121,8 @@ def check_modality(data_dir: Path, modality: str) -> dict:
         X = np.asarray(dataset.X)
         if is_tabular(modality):
             X = X.astype(np.float64)
+            if split == "train":
+                coverage = input_coverage(modality, X)
         _check_values(modality, X, split, problems)
         labels = _labels(modality, np.asarray(dataset.y), split, problems)
         if split == "train":
@@ -136,6 +139,8 @@ def check_modality(data_dir: Path, modality: str) -> dict:
         "val_records": counts["val"],
         "label_counts": label_counts,
         "problems": problems[:10],
+        #: tabular only: how many of the model's inputs this hospital records, and which it does not
+        "coverage": coverage,
     }
 
 

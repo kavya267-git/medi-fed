@@ -14,6 +14,10 @@ class ModalityDataSummary(OpenModel):
     simulated: bool
     train_samples: int
     val_samples: int
+    #: tabular kinds of data only: how many of the model's inputs the hospital records, and which it does not
+    inputs_total: Optional[int] = None
+    inputs_recorded: Optional[int] = None
+    not_recorded: Optional[List[str]] = None
 
 
 class HospitalRound(OpenModel):

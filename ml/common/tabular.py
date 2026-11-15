@@ -62,3 +62,24 @@ def tabular_schema(modality: str) -> TabularSchema:
         return TABULAR_SCHEMAS[modality]
     except KeyError as exc:
         raise ValueError(f"'{modality}' is not a tabular modality; expected one of {TABULAR_MODALITIES}") from exc
+
+
+def input_coverage(modality: str, X: np.ndarray) -> dict:
+    """Which inputs a hospital actually records, from its training values.
+
+    An input counts as not recorded when every value is missing, or every value equals the input's reference
+    value (how an import fills an input the hospital does not record). Counts and input names only."""
+    schema = tabular_schema(modality)
+    X = np.asarray(X, dtype=np.float64)
+    centre, _spread = schema.reference_scale
+    not_recorded = []
+    for i, name in enumerate(schema.feature_names):
+        column = X[:, i] if len(X) else np.array([])
+        present = column[~np.isnan(column)]
+        if len(present) == 0 or np.allclose(present, float(centre[i]), rtol=1e-4, atol=1e-6):
+            not_recorded.append(name)
+    return {
+        "inputs_total": schema.num_features,
+        "inputs_recorded": schema.num_features - len(not_recorded),
+        "not_recorded": not_recorded,
+    }

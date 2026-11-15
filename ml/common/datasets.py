@@ -143,4 +143,17 @@ def local_data_summary(hospital_dir: Path) -> dict:
             "train_samples": int(manifest.get("splits", {}).get("train", 0)),
             "val_samples": int(manifest.get("splits", {}).get("val", 0)),
         }
+        if is_tabular(modality):
+            summary[modality].update(_coverage(hospital_dir, modality))
     return summary
+
+
+def _coverage(hospital_dir: Path, modality: str) -> dict:
+    """Which of the model's inputs this hospital records (input names and counts, no values)."""
+    from ml.common.tabular import input_coverage
+
+    try:
+        train = load_local_dataset(hospital_dir, modality, "train", allow_missing_features=True)
+    except (DatasetUnavailableError, ValueError, OSError):
+        return {}
+    return input_coverage(modality, train.X)

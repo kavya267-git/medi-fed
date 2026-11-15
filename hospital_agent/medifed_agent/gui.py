@@ -18,6 +18,19 @@ LABELS = {"ehr": "EHR", "ecg": "ECG", "xray": "X-ray", "diabetes": "Diabetes"}
 BRAND = "#24489a"
 
 
+def check_notes(result: dict) -> str:
+    """Problems, or the label counts plus which inputs this hospital does not record."""
+    if result["problems"]:
+        return "; ".join(result["problems"])
+    notes = ", ".join(f"{k} {v}" for k, v in result["label_counts"].items())
+    coverage = result.get("coverage")
+    if coverage:
+        notes += f"; {coverage['inputs_recorded']} of {coverage['inputs_total']} inputs recorded"
+        if coverage["not_recorded"]:
+            notes += " (not recorded: " + ", ".join(coverage["not_recorded"]) + ")"
+    return notes
+
+
 class AgentWindow:
     def __init__(self, root: tk.Tk, default_server: str):
         self.root = root
@@ -221,7 +234,7 @@ class AgentWindow:
                 return
             for modality, result in results.items():
                 verdict = "Passed" if result["passed"] else "Failed"
-                notes = "; ".join(result["problems"]) or ", ".join(f"{k} {v}" for k, v in result["label_counts"].items())
+                notes = check_notes(result)
                 self.checks.insert(
                     "", "end", text=LABELS.get(modality, modality),
                     values=(verdict, result["train_records"], result["val_records"], notes),
@@ -296,7 +309,7 @@ class AgentWindow:
                 if self.checks.item(item, "text") == LABELS.get(modality, modality):
                     self.checks.delete(item)
             verdict = "Passed" if result["passed"] else "Failed"
-            notes = "; ".join(result["problems"]) or ", ".join(f"{k} {v}" for k, v in result["label_counts"].items())
+            notes = check_notes(result)
             self.checks.insert("", "end", text=LABELS.get(modality, modality),
                                values=(verdict, result["train_records"], result["val_records"], notes))
 

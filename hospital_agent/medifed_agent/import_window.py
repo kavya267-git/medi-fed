@@ -47,8 +47,8 @@ class ImportWindow:
 
         self.top = tk.Toplevel(parent)
         self.top.title("Import your hospital's data")
-        self.top.minsize(820, 700)
-        self.top.geometry("900x860")
+        self.top.minsize(900, 700)
+        self.top.geometry("1080x880")
         outer = ttk.Frame(self.top, padding=16)
         outer.pack(fill="both", expand=True)
         ttk.Label(outer, text="Import your hospital's export", style="Title.TLabel").pack(anchor="w")
@@ -57,7 +57,7 @@ class ImportWindow:
             text="Pick your CSV export and tell the agent which of your columns holds each measurement. Suggestions "
             "are pre-selected; check every row. The file is read and converted on this computer only.",
             style="Muted.TLabel",
-            wraplength=840,
+            wraplength=1020,
         ).pack(anchor="w", pady=(2, 10))
 
         top_row = ttk.Frame(outer)
@@ -119,28 +119,38 @@ class ImportWindow:
         if self.frame is None or modality is None:
             return
         columns = [str(c) for c in self.frame.columns]
-        mapping = load_mapping(self.session.mappings_dir, modality, columns) or suggest_mapping(modality, columns)
+        saved = load_mapping(self.session.mappings_dir, modality, columns)
+        if saved is not None:
+            saved.reasons = {name: "your saved matching" for name, column in saved.features.items() if column}
+        mapping = saved or suggest_mapping(modality, columns, self.frame)
         self._build_grid(modality, columns, mapping)
 
     # ------------------------------------------------------------ mapping grid
     def _build_grid(self, modality: str, columns: List[str], mapping: ColumnMapping) -> None:
         for child in self.grid.winfo_children():
             child.destroy()
-        self.feature_vars, self.sample_labels = {}, {}
+        self.feature_vars, self.sample_labels, self.reason_labels = {}, {}, {}
+        self.reasons = dict(mapping.reasons)
         schema = tabular_schema(modality)
         choices = [NOT_RECORDED] + columns
         ttk.Label(self.grid, text="Model input", font=("Segoe UI", 9, "bold")).grid(row=0, column=0, sticky="w")
         ttk.Label(self.grid, text="Your column", font=("Segoe UI", 9, "bold")).grid(row=0, column=1, sticky="w")
-        ttk.Label(self.grid, text="First values in your file", font=("Segoe UI", 9, "bold")).grid(row=0, column=2, sticky="w")
+        ttk.Label(self.grid, text="How it was matched", font=("Segoe UI", 9, "bold")).grid(row=0, column=2, sticky="w")
+        ttk.Label(self.grid, text="First values in your file", font=("Segoe UI", 9, "bold")).grid(
+            row=0, column=3, sticky="w", padx=(10, 0)
+        )
         for row, feature in enumerate(schema.features, start=1):
             ttk.Label(self.grid, text=f"{feature.label} ({feature.unit})").grid(row=row, column=0, sticky="w", pady=2)
             variable = tk.StringVar(value=mapping.features.get(feature.name) or NOT_RECORDED)
-            box = ttk.Combobox(self.grid, textvariable=variable, values=choices, state="readonly", width=30)
+            box = ttk.Combobox(self.grid, textvariable=variable, values=choices, state="readonly", width=26)
             box.grid(row=row, column=1, sticky="w", padx=8, pady=2)
-            box.bind("<<ComboboxSelected>>", lambda _e: self._refresh())
+            box.bind("<<ComboboxSelected>>", lambda _e, n=feature.name: self._picked(n))
             self.feature_vars[feature.name] = variable
+            reason = tk.Label(self.grid, text="", anchor="w", font=("Segoe UI", 9))
+            reason.grid(row=row, column=2, sticky="w")
+            self.reason_labels[feature.name] = reason
             sample = ttk.Label(self.grid, text="", style="Muted.TLabel")
-            sample.grid(row=row, column=2, sticky="w")
+            sample.grid(row=row, column=3, sticky="w", padx=(10, 0))
             self.sample_labels[feature.name] = sample
         row = len(schema.features) + 1
         ttk.Separator(self.grid).grid(row=row, column=0, columnspan=3, sticky="ew", pady=6)
@@ -149,18 +159,25 @@ class ImportWindow:
         label_box = ttk.Combobox(self.grid, textvariable=self.label_var, values=[NONE] + columns, state="readonly", width=30)
         label_box.grid(row=row + 1, column=1, sticky="w", padx=8, pady=2)
         label_box.bind("<<ComboboxSelected>>", lambda _e: self._refresh())
-        ttk.Label(self.grid, text=schema_label_hint(modality), style="Muted.TLabel").grid(row=row + 1, column=2, sticky="w")
+        ttk.Label(self.grid, text=schema_label_hint(modality), style="Muted.TLabel").grid(
+            row=row + 1, column=2, columnspan=2, sticky="w"
+        )
         ttk.Label(self.grid, text="Patient ID (optional)").grid(row=row + 2, column=0, sticky="w")
         self.group_var = tk.StringVar(value=mapping.group or NONE)
         ttk.Combobox(self.grid, textvariable=self.group_var, values=[NONE] + columns, state="readonly", width=30).grid(
             row=row + 2, column=1, sticky="w", padx=8, pady=2
         )
         ttk.Label(self.grid, text="keeps a patient's rows together when splitting", style="Muted.TLabel").grid(
-            row=row + 2, column=2, sticky="w"
+            row=row + 2, column=2, columnspan=2, sticky="w"
         )
         self.saved_choices = {"label": set(mapping.label_positive), "male": set(mapping.male_values),
                               "conversions": set(mapping.conversions)}
         self.zero_missing.set(mapping.zero_means_missing)
+        from_saved = "your saved matching" in mapping.reasons.values()
+        if modality == "diabetes" and not from_saved and not mapping.zero_means_missing:
+            # A 0 glucose, blood pressure or BMI is impossible: the export uses 0 for "not measured".
+            probe = inspect_export(self.frame, mapping)
+            self.zero_missing.set(bool(probe["impossible_zeros"]))
         self._refresh(first=True)
 
     def current_mapping(self) -> ColumnMapping:
@@ -183,19 +200,29 @@ class ImportWindow:
             headings=headings_signature(self.frame.columns),
         )
 
+    def _picked(self, name: str) -> None:
+        self.reasons[name] = "chosen by you"
+        self._refresh()
+
     def _refresh(self, first: bool = False) -> None:
         if self.frame is None:
             return
         for name, variable in self.feature_vars.items():
             column = variable.get()
             if column == NOT_RECORDED:
-                self.sample_labels[name].configure(text="not recorded: filled with a reference value for training")
+                self.reason_labels[name].configure(text="not recorded", fg="#5d6b7c")
+                self.sample_labels[name].configure(text="the shared model relies on your other inputs")
             else:
+                reason = self.reasons.get(name, "chosen by you")
+                colour = "#8a5a00" if "check" in reason else "#2a7a57"
+                self.reason_labels[name].configure(text=reason, fg=colour)
                 values = self.frame[column].dropna().astype(str).head(4).tolist()
                 self.sample_labels[name].configure(text=", ".join(values) or "(empty)")
         previous = {k: v.get() for k, v in self.choice_vars.items()}
         mapping = self.current_mapping()
         report = inspect_export(self.frame, mapping)
+        for name, filled in report.get("mostly_empty", {}).items():
+            self.reason_labels[name].configure(text=f"only {filled:.0%} filled: treated as not recorded", fg="#8a5a00")
         for child in self.extra.winfo_children():
             child.destroy()
         self.choice_vars = {}
@@ -232,17 +259,26 @@ class ImportWindow:
                 ttk.Checkbutton(self.extra, text=text, variable=variable).pack(anchor="w")
                 self.choice_vars[key] = variable
         if mapping.modality == "diabetes":
+            zeros = report.get("impossible_zeros", [])
+            hint = f" - found zeros in: {', '.join(zeros)}" if zeros else ""
             ttk.Checkbutton(
                 self.extra,
-                text="A 0 in glucose, blood pressure, skin fold, insulin or BMI means 'not measured' (as in the PIMA file)",
+                text="A 0 in glucose, blood pressure, skin fold, insulin or BMI means 'not measured' (as in the PIMA "
+                f"file){hint}",
                 variable=self.zero_missing,
             ).pack(anchor="w", pady=(6, 0))
-        missing = mapping.not_recorded()
+        missing = set(mapping.not_recorded()) | set(report.get("mostly_empty", {}))
         if missing:
+            total = len(mapping.features)
             ttk.Label(
                 self.extra,
-                text=f"{len(missing)} input(s) not recorded. The model learns nothing from them at your hospital.",
+                text=(
+                    f"Your hospital records {total - len(missing)} of the model's {total} inputs. That is fine: the "
+                    "shared model learned those inputs at other hospitals and predicts from the ones you have. Inputs "
+                    "you do not record are filled with a typical value and contribute nothing at your hospital."
+                ),
                 style="Muted.TLabel",
+                wraplength=1020,
             ).pack(anchor="w", pady=(6, 0))
         self.import_button.configure(state="normal" if mapping.label else "disabled")
 

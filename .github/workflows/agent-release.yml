@@ -1,5 +1,6 @@
 # Builds the MediFed Hospital Agent for Windows when a tag "agent-v*" is pushed, and attaches
-# MediFed-Hospital-Agent-Windows.zip to a GitHub Release for that tag.
+# MediFed-Hospital-Agent-Windows.zip to a GitHub Release for that tag. A tag with a suffix
+# (agent-v1.1.0-rc1) makes a pre-release, for testing before the dashboard links to it.
 # The API address pre-filled in the agent is DEFAULT_SERVER in hospital_agent/medifed_agent/defaults.py.
 # The repository variable MEDIFED_API_URL (Settings > Secrets and variables > Actions > Variables), if set,
 # overrides it. It is an address, not a secret.
@@ -43,3 +44,4 @@ jobs:
         with:
           files: hospital_agent/dist/MediFed-Hospital-Agent-Windows.zip
           fail_on_unmatched_files: true
+          prerelease: ${{ contains(github.ref_name, '-') }}

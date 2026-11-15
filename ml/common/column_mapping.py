@@ -13,6 +13,7 @@ Nothing here leaves the computer.
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import json
 import re
@@ -131,6 +132,8 @@ class ColumnMapping:
     #: diabetes: a 0 in glucose, blood pressure, skin fold, insulin or BMI means "not measured" (PIMA convention)
     zero_means_missing: bool = False
     headings: str = ""
+    #: why each column was suggested (shown next to the match); empty for a saved, confirmed mapping
+    reasons: Dict[str, str] = field(default_factory=dict)
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), indent=2)
@@ -144,35 +147,140 @@ class ColumnMapping:
         return [name for name, column in self.features.items() if column is None]
 
 
-def _match(columns: Sequence[str], names: Sequence[str], codes: Sequence[str], taken: set) -> Optional[str]:
-    normalised = {column: _norm(column) for column in columns if column not in taken}
-    for column, key in normalised.items():  # exact common name first
-        if key in names:
-            return column
-    for column in normalised:  # then a LOINC code anywhere in the heading
-        if any(code in str(column) for code in codes):
-            return column
+#: Words that describe units or are filler in a heading ("Heart rate (bpm)", "HR_BPM", "Serum creatinine value").
+_FILLER = {
+    "bpm", "mmhg", "mgdl", "mg", "dl", "mmol", "mmoll", "umol", "umoll", "gdl", "gl", "l", "per", "min", "years", "yrs",
+    "yr", "percent", "pct", "kg", "m2", "kgm2", "c", "f", "degc", "degf", "value", "level", "result", "measured",
+    "the", "of", "at", "in", "count", "no", "num", "x109", "109l", "uiu", "uuml", "uml", "iu", "score",
+}
+
+#: Inputs whose typical values are distinctive enough to guess a column from its values alone (when no heading
+#: matched). Count-like, yes/no and age-like inputs are left out: their values look like too many other columns.
+VALUE_GUESSABLE = {
+    "ehr": ("heart_rate", "systolic_bp", "resp_rate", "temperature_c", "spo2", "hemoglobin"),
+    "diabetes": ("glucose", "diastolic_bp", "bmi"),
+}
+
+#: Why a column was suggested, from most to least certain. Shown next to each match.
+REASONS = {
+    "name": "matched by name",
+    "loinc": "matched by LOINC code",
+    "similar": "similar name - please check",
+    "typo": "possible spelling variant - please check",
+    "values": "guessed from the values - please check",
+}
+
+
+def _tokens(heading: str) -> List[str]:
+    """Lower-case word pieces of a heading without bracketed units, splitting camelCase and punctuation."""
+    text = re.sub(r"[\(\[].*?[\)\]]", " ", str(heading))
+    text = re.sub(r"([a-z])([A-Z])", r"\1 \2", text)
+    return [t for t in re.split(r"[^a-zA-Z0-9]+", text.lower()) if t]
+
+
+def _clean(heading: str) -> str:
+    """The heading without unit and filler words, squeezed together ("Heart Rate (bpm)" -> "heartrate")."""
+    kept = [t for t in _tokens(heading) if t not in _FILLER]
+    return "".join(kept) or _norm(heading)
+
+
+def _name_match(column: str, names: Sequence[str], codes: Sequence[str]) -> Optional[str]:
+    """How a heading matches one input's common names / LOINC codes, as a key of REASONS, or None."""
+    if _norm(column) in names or _clean(column) in names:
+        return "name"
+    if any(code in str(column) for code in codes):
+        return "loinc"
+    tokens = [t for t in _tokens(column) if t not in _FILLER]
+    if any(t in names for t in tokens if len(t) >= 3) or any(
+        _clean(column).startswith(n) for n in names if len(n) >= 6
+    ):
+        return "similar"
+    cleaned = _clean(column)
+    if len(cleaned) >= 5 and any(
+        len(n) >= 5 and difflib.SequenceMatcher(None, cleaned, n).ratio() >= 0.84 for n in names
+    ):
+        return "typo"
     return None
 
 
-def suggest_mapping(modality: str, columns: Sequence[str]) -> ColumnMapping:
-    """A first guess for every input. The person checks each one; nothing is accepted silently."""
+_ORDER = ("name", "loinc", "similar", "typo")
+
+
+def _match(columns: Sequence[str], names: Sequence[str], codes: Sequence[str], taken: set) -> tuple:
+    """The best-matching free heading and why, or (None, None). More certain kinds of match win."""
+    found: Dict[str, str] = {}
+    for column in columns:
+        if column in taken:
+            continue
+        reason = _name_match(column, names, codes)
+        if reason:
+            found.setdefault(reason, column)
+    for reason in _ORDER:
+        if reason in found:
+            return found[reason], reason
+    return None, None
+
+
+def _value_score(series: pd.Series, feature, bounds: tuple) -> Optional[float]:
+    """How far (in reference spreads) a column's median is from an input's typical value, if its values fit."""
+    values = pd.to_numeric(series, errors="coerce").dropna()
+    if len(values) < 5 or values.nunique() < 4:
+        return None
+    low, high = bounds
+    if ((values >= low) & (values <= high)).mean() < 0.95:
+        return None
+    distance = abs(float(values.median()) - feature.ref_mean) / feature.ref_std
+    return distance if distance <= 1.0 else None
+
+
+def suggest_mapping(modality: str, columns: Sequence[str], frame: Optional[pd.DataFrame] = None) -> ColumnMapping:
+    """A first guess for every input, with the reason for each. The person checks every one.
+
+    Headings are matched by common name, LOINC code, word pieces ("S. Creatinine", "HR_BPM") and spelling
+    variants ("Creatnine"). With ``frame``, an input no heading matched may be guessed from its values when they
+    are distinctive (a column of 36-40 for temperature); those guesses are marked for checking."""
+    from ml.common.data_check import BOUNDS
+
     schema = tabular_schema(modality)
     columns = [str(c) for c in columns]
     taken: set = set()
-    label = _match(columns, LABEL_SYNONYMS, (), taken)
+    label, _ = _match(columns, LABEL_SYNONYMS, (), taken)
     if label:
         taken.add(label)
-    group = _match(columns, GROUP_SYNONYMS, (), taken)
+    group, _ = _match(columns, GROUP_SYNONYMS, (), taken)
     if group:
         taken.add(group)
-    features: Dict[str, Optional[str]] = {}
-    for name in schema.feature_names:
-        chosen = _match(columns, SYNONYMS[modality].get(name, (name,)), LOINC[modality].get(name, ()), taken)
-        features[name] = chosen
-        if chosen:
-            taken.add(chosen)
-    return ColumnMapping(modality, features, label=label, group=group, headings=headings_signature(columns))
+    features: Dict[str, Optional[str]] = {name: None for name in schema.feature_names}
+    reasons: Dict[str, str] = {}
+    # Most certain matches first, across all inputs, so a weak match cannot take a heading a strong one needs.
+    for level in _ORDER:
+        for name in schema.feature_names:
+            if features[name]:
+                continue
+            column, reason = _match(columns, SYNONYMS[modality].get(name, (name,)), LOINC[modality].get(name, ()), taken)
+            if column and reason == level:
+                features[name], reasons[name] = column, REASONS[reason]
+                taken.add(column)
+    if frame is not None:
+        candidates = []
+        for name in VALUE_GUESSABLE.get(modality, ()):
+            if features[name]:
+                continue
+            feature = schema.features[schema.feature_names.index(name)]
+            for column in columns:
+                if column in taken or column not in frame:
+                    continue
+                score = _value_score(frame[column], feature, BOUNDS[modality][name])
+                if score is not None:
+                    candidates.append((score, name, column))
+        for _score, name, column in sorted(candidates):
+            if features[name] or column in taken:
+                continue
+            features[name], reasons[name] = column, REASONS["values"]
+            taken.add(column)
+    mapping = ColumnMapping(modality, features, label=label, group=group, headings=headings_signature(columns))
+    mapping.reasons = reasons
+    return mapping
 
 
 def _numeric(series: pd.Series) -> pd.Series:
@@ -210,9 +318,26 @@ def inspect_export(frame: pd.DataFrame, mapping: ColumnMapping) -> dict:
             report["conversions"].append(
                 {"key": key, "feature": feature, "column": column, "median": float(values.median()), "description": description}
             )
+    report["impossible_zeros"] = []
+    if mapping.modality == "diabetes":
+        from ml.diabetes.features import ZERO_MEANS_MISSING
+
+        for name in ZERO_MEANS_MISSING:
+            column = mapping.features.get(name)
+            if column and column in frame and (_numeric(frame[column]) == 0).any():
+                report["impossible_zeros"].append(name)
+    from ml.common.data_check import max_missing_share
+
+    limit = max_missing_share(mapping.modality)
+    report["mostly_empty"] = {}
     for name, column in mapping.features.items():
-        if column and column in frame and _numeric(frame[column]).notna().sum() == 0 and name != "sex_male":
+        if not column or column not in frame or name == "sex_male":
+            continue
+        filled = float(_numeric(frame[column]).notna().mean()) if len(frame) else 0.0
+        if filled == 0:
             report["empty"].append(name)
+        if 1 - filled > limit:
+            report["mostly_empty"][name] = filled
     return report
 
 
@@ -255,7 +380,10 @@ def apply_mapping(
     if with_label and not mapping.label:
         raise ValueError("Choose the column that holds the outcome (the label).")
     out = pd.DataFrame(index=frame.index)
-    report: dict = {"filled_with_reference": [], "converted": [], "not_numbers": {}}
+    from ml.common.data_check import max_missing_share
+
+    report: dict = {"filled_with_reference": [], "converted": [], "not_numbers": {}, "mostly_empty": {}}
+    limit = max_missing_share(mapping.modality)
     centre, _spread = schema.reference_scale
     for i, name in enumerate(schema.feature_names):
         column = mapping.features.get(name)
@@ -278,6 +406,12 @@ def apply_mapping(
 
             if name in ZERO_MEANS_MISSING:
                 values = values.mask(values == 0)
+        if fill_not_recorded and len(values) and values.isna().mean() > limit:
+            # Too few values to fill the gaps from neighbours: treat as not recorded at this hospital.
+            out[name] = float(centre[i])
+            report["filled_with_reference"].append(name)
+            report["mostly_empty"][name] = float(values.notna().mean())
+            continue
         for key in mapping.conversions:
             feature, _test, convert, description = CONVERSIONS[key]
             if feature == name:

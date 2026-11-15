@@ -126,10 +126,17 @@ agent does not guess silently. **Import data…** lets the hospital match its ow
 on its own computer:
 
 1. **Choose the export.** Pick the kind of data (EHR or diabetes) and the CSV file.
-2. **Check each match.** Every model input has a dropdown of the file's own headings. The agent pre-selects
-   matches from common names, and from LOINC codes in a heading (for example `8867-4` heart rate, `2160-0`
-   creatinine), which identify a measurement for certain. The person checks every row, or picks **not
-   recorded**.
+2. **Check each match.** Every model input has a dropdown of the file's own headings, with a guess
+   pre-selected and the reason shown next to it, most certain first:
+   - **by name:** common names, also inside headings with units or punctuation ("HR_BPM", "Heart Rate (bpm)",
+     "BP Systolic (mmHg)");
+   - **by LOINC code** in the heading, for example `8867-4` heart rate or `2160-0` creatinine;
+   - **similar name:** a known word inside a longer heading ("S. Creatinine", "HGB g/dL");
+   - **spelling variant:** "Creatnine";
+   - **from the values:** for coded headings such as "obs_01", when the values are distinctive (a column of
+     36-40 for temperature, 60-120 for heart rate). Only inputs with distinctive values are guessed this way.
+
+   Weaker matches are marked "please check". The person checks every row, or picks **not recorded**.
 3. **Pick the outcome and patient columns.** Choose the outcome column. Optionally choose a patient-ID column,
    which keeps one patient's rows on the same side of the 75% / 25% split.
 4. **Translate text values.** The agent lists the text it found ("Died" / "Discharged", "M" / "F",
@@ -147,8 +154,25 @@ on its own computer:
    (pass or fail with the problems listed) and saves the matching. The next export with the same headings
    opens pre-filled.
 
-**Not recorded inputs.** An input the hospital does not record is filled with its reference value for training,
-so the model learns nothing from it at that hospital. The import result says so.
+**Hospitals with different measurements.** A hospital does not need to record every input:
+- **Inputs it does not record.** These are filled with the input's reference value. A column that is more than
+  half empty (65% for diabetes) is treated the same way, because KNN cannot fill it reliably. The shared model
+  learns those inputs at other hospitals, and at this hospital it predicts from the inputs that are there.
+- **Extra columns.** Columns the model does not use (cholesterol, ward) are ignored.
+- **Coverage.** The data check and the dashboard's hospital page show "12 of 14 inputs recorded (not recorded:
+  lactate, haemoglobin)". Only input names and counts are shared.
+
+How much this costs was measured on the real PIMA split (30 rounds, 3 seeds; held-out ROC-AUC):
+
+| Situation | ROC-AUC |
+| --- | --- |
+| Every hospital records everything | 0.81 |
+| One hospital does not record insulin or skin fold | 0.81 |
+| A patient's glucose is unknown | 0.77 |
+| A patient's BMI and age are unknown | 0.78 |
+
+Training with randomly hidden inputs ("input masking" at 15% or 30%) was also tried. It changed ROC-AUC by
+0.005 or less, so it is not used.
 
 **Scoring a CSV.** **Score a CSV file…** in the Predict window uses the same saved matching, so a file of new
 patients with the hospital's own headings scores directly. A measurement missing from that file is estimated
