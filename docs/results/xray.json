@@ -1,0 +1,74 @@
+{
+ "modality": "xray",
+ "rounds": 20,
+ "cap": 0,
+ "results": [
+  {
+   "seed": 0,
+   "hospital": "hospital_a",
+   "train": 240,
+   "held_out": 80,
+   "own": 0.9060245007551603,
+   "glob": 1.0,
+   "own_acc": 0.9125,
+   "glob_acc": 1.0,
+   "central": 1.0,
+   "central_acc": 1.0,
+   "own_on_others": 0.6877057987591417,
+   "glob_on_others": 0.5735785953177257
+  },
+  {
+   "seed": 0,
+   "hospital": "hospital_b",
+   "train": 195,
+   "held_out": 65,
+   "own": 1.0,
+   "glob": 0.23529411764705882,
+   "own_acc": 1.0,
+   "glob_acc": 0.3076923076923077,
+   "central": 1.0,
+   "central_acc": 1.0,
+   "own_on_others": 0.5474559686888454,
+   "glob_on_others": 0.8523281596452328
+  },
+  {
+   "seed": 0,
+   "hospital": "hospital_c",
+   "train": 165,
+   "held_out": 55,
+   "own": 0.5209059233449478,
+   "glob": 0.8166666666666667,
+   "own_acc": 0.6363636363636364,
+   "glob_acc": 0.8909090909090909,
+   "central": 1.0,
+   "central_acc": 1.0,
+   "own_on_others": 0.4236453201970443,
+   "glob_on_others": 0.6502717391304348
+  },
+  {
+   "seed": 0,
+   "hospital": "hospital_d",
+   "train": 150,
+   "held_out": 50,
+   "own": 0.4652406417112299,
+   "glob": 0.3670886075949367,
+   "own_acc": 0.52,
+   "glob_acc": 0.58,
+   "central": 1.0,
+   "central_acc": 1.0,
+   "own_on_others": 0.6052478811099501,
+   "glob_on_others": 0.7395234811920631
+  },
+  {
+   "seed": 0,
+   "hospital": "ALL",
+   "train": 750,
+   "held_out": 250,
+   "own": 0.766393667894245,
+   "glob": 0.712,
+   "own_acc": 0.796,
+   "glob_acc": 0.712,
+   "central": 1.0
+  }
+ ]
+}
