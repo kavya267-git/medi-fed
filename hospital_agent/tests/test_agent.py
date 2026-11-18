@@ -184,3 +184,35 @@ def test_import_an_export_with_own_headings_then_score_new_patients(agent_home, 
     assert scored["probability"].between(0, 1).all() and (scored["estimated_inputs"].str.contains("Insulin")).all()
     with pytest.raises(AgentError, match="Import data"):
         session.score_frame("diabetes", folder, pd.DataFrame({"x": [1.0]}))
+
+
+def test_evaluate_the_global_model_on_own_labelled_records(agent_home, tmp_path, monkeypatch):
+    """Evaluate with a labelled file: scores computed on this computer; the import matching is not overwritten."""
+    import numpy as np
+    import pandas as pd
+
+    from ml.common.column_mapping import save_mapping, suggest_mapping
+    from ml.common.weights import weights_to_bytes
+    from ml.registry import get_adapter
+    from ml.simulation.diabetes import DiabetesProfile, simulate_diabetes
+    from ml.training.model_store import save_global_model
+
+    monkeypatch.setenv("ML_BACKEND", "numpy-reference")
+    session = AgentSession(log=lambda line: None)
+    adapter = get_adapter("diabetes", "numpy-reference")
+    save_global_model(session.models_dir, "diabetes", weights_to_bytes(adapter.init_weights(0)),
+                      {"architecture": adapter.architecture, "model_version": 2})
+    X, y = simulate_diabetes(40, np.random.default_rng(1), DiabetesProfile(unmeasured=0.0))  # SIMULATED
+    labelled = pd.DataFrame(X, columns=["Preg", "Glucose", "BP", "Skin", "Insulin", "BMI", "DPF", "Age"])
+    labelled["Truth"] = np.where(y == 1, "Positive", "Negative")
+    mapping = suggest_mapping("diabetes", labelled.columns, labelled)
+    saved = save_mapping(session.mappings_dir, suggest_mapping("diabetes", ["Glucose"]))
+    before = saved.read_text(encoding="utf-8")
+    with pytest.raises(AgentError, match="true answer"):
+        session.evaluate_frame("diabetes", None, labelled, mapping)
+    mapping.label, mapping.label_positive = "Truth", ["Positive"]
+    result = session.evaluate_frame("diabetes", None, labelled, mapping)
+    assert result["n"] == 40 and result["positives"] == int(y.sum())
+    c = result["confusion"]
+    assert c["tp"] + c["fn"] + c["tn"] + c["fp"] == 40 and result["model"]["version"] == 2
+    assert saved.read_text(encoding="utf-8") == before

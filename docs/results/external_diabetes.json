@@ -1,0 +1,570 @@
+{
+ "what": "External validation of the global diabetes model on a cohort that took no part in training",
+ "verdict": "NOT POSSIBLE with this file: almost every row is a record of the training cohort (PIMA)",
+ "data": {
+  "file": "data/external/frankfurt_diabetes.csv",
+  "md5": "5304944c7c2939f27f1c0ef95bad0cca",
+  "rows": 2000,
+  "simulated": false,
+  "positives": 684,
+  "negatives": 1316
+ },
+ "model": {
+  "architecture": "MLP",
+  "model_version": 8,
+  "round_id": "diabetes-r0008",
+  "sha256": "b882baa886ace3f9c9832706b39db2dc058bde2d2ca3d09d7a40c6cd4fc3491f",
+  "backend": "pytorch"
+ },
+ "mapping": {
+  "features": {
+   "pregnancies": "Pregnancies",
+   "glucose": "Glucose",
+   "diastolic_bp": "BloodPressure",
+   "skin_thickness": "SkinThickness",
+   "insulin": "Insulin",
+   "bmi": "BMI",
+   "pedigree": "DiabetesPedigreeFunction",
+   "age": "Age"
+  },
+  "label": "Outcome",
+  "zero_means_missing": true,
+  "conversions": [],
+  "reasons": {
+   "pregnancies": "matched by name",
+   "glucose": "matched by name",
+   "diastolic_bp": "matched by name",
+   "skin_thickness": "matched by name",
+   "insulin": "matched by name",
+   "bmi": "matched by name",
+   "pedigree": "matched by name",
+   "age": "matched by name"
+  }
+ },
+ "overlap": {
+  "training_reference": "PIMA Indians Diabetes (OpenML 37)",
+  "reference_md5": "3cbaa3e54586aa88cf6aacb4033e4470",
+  "compared_on": "the model's inputs, 0 = not measured as a gap in both files",
+  "rows_matching_training_records": 1981,
+  "distinct_training_records_matched": 734,
+  "matching_with_same_outcome": 1981,
+  "copies_of_hospital_training_split_records": 1484,
+  "copies_of_held_out_records_only": 497,
+  "repeated_rows_in_file": 1256,
+  "unseen_rows": 19,
+  "unseen_distinct_rows": 10,
+  "unseen_distinct_max_values_shared_with_one_pima_record": [
+   2,
+   2,
+   2,
+   3,
+   3,
+   3,
+   3,
+   3,
+   3,
+   4
+  ]
+ },
+ "baselines": {
+  "own_only": {
+   "rounds": 8,
+   "local_epochs": 2,
+   "seeds": [
+    0,
+    1,
+    2
+   ],
+   "hospital_train_records": {
+    "hospital_a": 164,
+    "hospital_b": 72,
+    "hospital_c": 119,
+    "hospital_d": 221
+   }
+  },
+  "majority_class_predicts": 0
+ },
+ "threshold": 0.5,
+ "results": {
+  "main: not in the training cohort, distinct": {
+   "rows": 10,
+   "positives": 4,
+   "negatives": 6,
+   "rows_with_estimated_values": 5,
+   "gaps_filled": "KNN imputation fitted on the 10 evaluated records' measurements (not their answers)",
+   "global": {
+    "n": 10,
+    "positives": 4,
+    "negatives": 6,
+    "threshold": 0.5,
+    "accuracy": 0.4,
+    "macro_f1": 0.375,
+    "f1_positive": 0.5,
+    "sensitivity": 0.75,
+    "specificity": 0.16666666666666666,
+    "roc_auc": 0.29166666666666663,
+    "confusion": {
+     "tn": 1,
+     "fp": 5,
+     "fn": 1,
+     "tp": 3
+    }
+   },
+   "global_ci95": {
+    "accuracy": [
+     0.1,
+     0.7
+    ],
+    "macro_f1": [
+     0.09090909090909091,
+     0.6703296703296704
+    ],
+    "sensitivity": [
+     0.25,
+     1.0
+    ],
+    "specificity": [
+     0.0,
+     0.5
+    ],
+    "roc_auc": [
+     0.0,
+     0.6666666666666667
+    ]
+   },
+   "own_smallest": {
+    "hospital": "hospital_b",
+    "train_records": 72,
+    "per_seed": [
+     {
+      "n": 10,
+      "positives": 4,
+      "negatives": 6,
+      "threshold": 0.5,
+      "accuracy": 0.5,
+      "macro_f1": 0.45054945054945056,
+      "f1_positive": 0.6153846153846154,
+      "sensitivity": 1.0,
+      "specificity": 0.16666666666666666,
+      "roc_auc": 0.45833333333333337,
+      "confusion": {
+       "tn": 1,
+       "fp": 5,
+       "fn": 0,
+       "tp": 4
+      }
+     },
+     {
+      "n": 10,
+      "positives": 4,
+      "negatives": 6,
+      "threshold": 0.5,
+      "accuracy": 0.5,
+      "macro_f1": 0.45054945054945056,
+      "f1_positive": 0.6153846153846154,
+      "sensitivity": 1.0,
+      "specificity": 0.16666666666666666,
+      "roc_auc": 0.41666666666666663,
+      "confusion": {
+       "tn": 1,
+       "fp": 5,
+       "fn": 0,
+       "tp": 4
+      }
+     },
+     {
+      "n": 10,
+      "positives": 4,
+      "negatives": 6,
+      "threshold": 0.5,
+      "accuracy": 0.5,
+      "macro_f1": 0.4949494949494949,
+      "f1_positive": 0.5454545454545454,
+      "sensitivity": 0.75,
+      "specificity": 0.3333333333333333,
+      "roc_auc": 0.625,
+      "confusion": {
+       "tn": 2,
+       "fp": 4,
+       "fn": 1,
+       "tp": 3
+      }
+     }
+    ],
+    "summary": {
+     "accuracy": {
+      "mean": 0.5,
+      "min": 0.5,
+      "max": 0.5
+     },
+     "macro_f1": {
+      "mean": 0.46534946534946536,
+      "min": 0.45054945054945056,
+      "max": 0.4949494949494949
+     },
+     "sensitivity": {
+      "mean": 0.9166666666666666,
+      "min": 0.75,
+      "max": 1.0
+     },
+     "specificity": {
+      "mean": 0.2222222222222222,
+      "min": 0.16666666666666666,
+      "max": 0.3333333333333333
+     },
+     "roc_auc": {
+      "mean": 0.5,
+      "min": 0.41666666666666663,
+      "max": 0.625
+     },
+     "f1_positive": {
+      "mean": 0.5920745920745921,
+      "min": 0.5454545454545454,
+      "max": 0.6153846153846154
+     }
+    }
+   },
+   "own_largest": {
+    "hospital": "hospital_d",
+    "train_records": 221,
+    "per_seed": [
+     {
+      "n": 10,
+      "positives": 4,
+      "negatives": 6,
+      "threshold": 0.5,
+      "accuracy": 0.6,
+      "macro_f1": 0.5833333333333333,
+      "f1_positive": 0.6666666666666666,
+      "sensitivity": 1.0,
+      "specificity": 0.3333333333333333,
+      "roc_auc": 0.5416666666666667,
+      "confusion": {
+       "tn": 2,
+       "fp": 4,
+       "fn": 0,
+       "tp": 4
+      }
+     },
+     {
+      "n": 10,
+      "positives": 4,
+      "negatives": 6,
+      "threshold": 0.5,
+      "accuracy": 0.5,
+      "macro_f1": 0.45054945054945056,
+      "f1_positive": 0.6153846153846154,
+      "sensitivity": 1.0,
+      "specificity": 0.16666666666666666,
+      "roc_auc": 0.3333333333333333,
+      "confusion": {
+       "tn": 1,
+       "fp": 5,
+       "fn": 0,
+       "tp": 4
+      }
+     },
+     {
+      "n": 10,
+      "positives": 4,
+      "negatives": 6,
+      "threshold": 0.5,
+      "accuracy": 0.7,
+      "macro_f1": 0.696969696969697,
+      "f1_positive": 0.7272727272727273,
+      "sensitivity": 1.0,
+      "specificity": 0.5,
+      "roc_auc": 0.625,
+      "confusion": {
+       "tn": 3,
+       "fp": 3,
+       "fn": 0,
+       "tp": 4
+      }
+     }
+    ],
+    "summary": {
+     "accuracy": {
+      "mean": 0.6,
+      "min": 0.5,
+      "max": 0.7
+     },
+     "macro_f1": {
+      "mean": 0.5769508269508269,
+      "min": 0.45054945054945056,
+      "max": 0.696969696969697
+     },
+     "sensitivity": {
+      "mean": 1.0,
+      "min": 1.0,
+      "max": 1.0
+     },
+     "specificity": {
+      "mean": 0.3333333333333333,
+      "min": 0.16666666666666666,
+      "max": 0.5
+     },
+     "roc_auc": {
+      "mean": 0.5,
+      "min": 0.3333333333333333,
+      "max": 0.625
+     },
+     "f1_positive": {
+      "mean": 0.6697746697746698,
+      "min": 0.6153846153846154,
+      "max": 0.7272727272727273
+     }
+    }
+   },
+   "majority": {
+    "n": 10,
+    "positives": 4,
+    "negatives": 6,
+    "threshold": 0.5,
+    "accuracy": 0.6,
+    "macro_f1": 0.375,
+    "f1_positive": 0.0,
+    "sensitivity": 0.0,
+    "specificity": 1.0,
+    "roc_auc": 0.5,
+    "confusion": {
+     "tn": 6,
+     "fp": 0,
+     "fn": 4,
+     "tp": 0
+    },
+    "predicts": 0
+   },
+   "too_small_to_conclude": true
+  },
+  "whole file incl. PIMA copies (NOT an external test)": {
+   "rows": 2000,
+   "positives": 684,
+   "negatives": 1316,
+   "rows_with_estimated_values": 965,
+   "gaps_filled": "KNN imputation fitted on the 2000 evaluated records' measurements (not their answers)",
+   "global": {
+    "n": 2000,
+    "positives": 684,
+    "negatives": 1316,
+    "threshold": 0.5,
+    "accuracy": 0.74,
+    "macro_f1": 0.7266492773553108,
+    "f1_positive": 0.6662387676508345,
+    "sensitivity": 0.7587719298245614,
+    "specificity": 0.7302431610942249,
+    "roc_auc": 0.8276175811870101,
+    "confusion": {
+     "tn": 961,
+     "fp": 355,
+     "fn": 165,
+     "tp": 519
+    }
+   },
+   "own_smallest": {
+    "hospital": "hospital_b",
+    "train_records": 72,
+    "per_seed": [
+     {
+      "n": 2000,
+      "positives": 684,
+      "negatives": 1316,
+      "threshold": 0.5,
+      "accuracy": 0.673,
+      "macro_f1": 0.6620504340636626,
+      "f1_positive": 0.6012195121951219,
+      "sensitivity": 0.7207602339181286,
+      "specificity": 0.648176291793313,
+      "roc_auc": 0.771187721075739,
+      "confusion": {
+       "tn": 853,
+       "fp": 463,
+       "fn": 191,
+       "tp": 493
+      }
+     },
+     {
+      "n": 2000,
+      "positives": 684,
+      "negatives": 1316,
+      "threshold": 0.5,
+      "accuracy": 0.7105,
+      "macro_f1": 0.6885454940090731,
+      "f1_positive": 0.6058543226684819,
+      "sensitivity": 0.6505847953216374,
+      "specificity": 0.7416413373860182,
+      "roc_auc": 0.7932064203060843,
+      "confusion": {
+       "tn": 976,
+       "fp": 340,
+       "fn": 239,
+       "tp": 445
+      }
+     },
+     {
+      "n": 2000,
+      "positives": 684,
+      "negatives": 1316,
+      "threshold": 0.5,
+      "accuracy": 0.691,
+      "macro_f1": 0.6766019975321278,
+      "f1_positive": 0.6083650190114068,
+      "sensitivity": 0.7017543859649122,
+      "specificity": 0.6854103343465046,
+      "roc_auc": 0.7823303826943244,
+      "confusion": {
+       "tn": 902,
+       "fp": 414,
+       "fn": 204,
+       "tp": 480
+      }
+     }
+    ],
+    "summary": {
+     "accuracy": {
+      "mean": 0.6915,
+      "min": 0.673,
+      "max": 0.7105
+     },
+     "macro_f1": {
+      "mean": 0.6757326418682879,
+      "min": 0.6620504340636626,
+      "max": 0.6885454940090731
+     },
+     "sensitivity": {
+      "mean": 0.6910331384015594,
+      "min": 0.6505847953216374,
+      "max": 0.7207602339181286
+     },
+     "specificity": {
+      "mean": 0.6917426545086119,
+      "min": 0.648176291793313,
+      "max": 0.7416413373860182
+     },
+     "roc_auc": {
+      "mean": 0.7822415080253826,
+      "min": 0.771187721075739,
+      "max": 0.7932064203060843
+     },
+     "f1_positive": {
+      "mean": 0.6051462846250035,
+      "min": 0.6012195121951219,
+      "max": 0.6083650190114068
+     }
+    }
+   },
+   "own_largest": {
+    "hospital": "hospital_d",
+    "train_records": 221,
+    "per_seed": [
+     {
+      "n": 2000,
+      "positives": 684,
+      "negatives": 1316,
+      "threshold": 0.5,
+      "accuracy": 0.7525,
+      "macro_f1": 0.7349237905897945,
+      "f1_positive": 0.6666666666666666,
+      "sensitivity": 0.7236842105263158,
+      "specificity": 0.7674772036474165,
+      "roc_auc": 0.8291528910929806,
+      "confusion": {
+       "tn": 1010,
+       "fp": 306,
+       "fn": 189,
+       "tp": 495
+      }
+     },
+     {
+      "n": 2000,
+      "positives": 684,
+      "negatives": 1316,
+      "threshold": 0.5,
+      "accuracy": 0.753,
+      "macro_f1": 0.7350922350922351,
+      "f1_positive": 0.6662162162162162,
+      "sensitivity": 0.7207602339181286,
+      "specificity": 0.7697568389057751,
+      "roc_auc": 0.8338854672141347,
+      "confusion": {
+       "tn": 1013,
+       "fp": 303,
+       "fn": 191,
+       "tp": 493
+      }
+     },
+     {
+      "n": 2000,
+      "positives": 684,
+      "negatives": 1316,
+      "threshold": 0.5,
+      "accuracy": 0.7525,
+      "macro_f1": 0.7377049180327869,
+      "f1_positive": 0.6754098360655738,
+      "sensitivity": 0.7529239766081871,
+      "specificity": 0.7522796352583586,
+      "roc_auc": 0.8325545690467303,
+      "confusion": {
+       "tn": 990,
+       "fp": 326,
+       "fn": 169,
+       "tp": 515
+      }
+     }
+    ],
+    "summary": {
+     "accuracy": {
+      "mean": 0.7526666666666667,
+      "min": 0.7525,
+      "max": 0.753
+     },
+     "macro_f1": {
+      "mean": 0.7359069812382723,
+      "min": 0.7349237905897945,
+      "max": 0.7377049180327869
+     },
+     "sensitivity": {
+      "mean": 0.7324561403508771,
+      "min": 0.7207602339181286,
+      "max": 0.7529239766081871
+     },
+     "specificity": {
+      "mean": 0.7631712259371833,
+      "min": 0.7522796352583586,
+      "max": 0.7697568389057751
+     },
+     "roc_auc": {
+      "mean": 0.8318643091179485,
+      "min": 0.8291528910929806,
+      "max": 0.8338854672141347
+     },
+     "f1_positive": {
+      "mean": 0.6694309063161522,
+      "min": 0.6662162162162162,
+      "max": 0.6754098360655738
+     }
+    }
+   },
+   "majority": {
+    "n": 2000,
+    "positives": 684,
+    "negatives": 1316,
+    "threshold": 0.5,
+    "accuracy": 0.658,
+    "macro_f1": 0.3968636911942099,
+    "f1_positive": 0.0,
+    "sensitivity": 0.0,
+    "specificity": 1.0,
+    "roc_auc": 0.5,
+    "confusion": {
+     "tn": 1316,
+     "fp": 0,
+     "fn": 684,
+     "tp": 0
+    },
+    "predicts": 0
+   }
+  }
+ },
+ "note": "Research prototype, not a medical device. These numbers are not clinical accuracy."
+}

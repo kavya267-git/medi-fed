@@ -54,3 +54,6 @@ experiments/results/*/predictions.csv
 # Hospital agent build output
 hospital_agent/dist/
 hospital_agent/build/
+
+# External validation datasets: obtain them yourself under their own terms (docs/external_validation.md)
+data/external/

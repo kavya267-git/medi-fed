@@ -85,6 +85,18 @@ def load_local_model(models_dir: Path, modality: str, backend: Optional[str] = N
             f"No global {modality} model on this computer yet. Connect and take part in a {modality} round first; "
             "the agent keeps the model each round produces."
         )
+    return load_model_file(weights_file, modality, backend)
+
+
+def load_model_file(weights_file: Path, modality: str, backend: Optional[str] = None) -> LocalModel:
+    """A saved model file (``<name>.npz`` beside its ``<name>.json``), checked against the SHA-256 recorded in
+    the JSON and against this code's model architecture (its signature)."""
+    if not is_tabular(modality):
+        raise PredictionUnavailable(f"Prediction is available for {', '.join(PREDICTABLE_MODALITIES)} only.")
+    weights_file = Path(weights_file)
+    info_file = weights_file.with_suffix(".json")
+    if not weights_file.exists() or not info_file.exists():
+        raise PredictionUnavailable(f"{weights_file} and {info_file.name} beside it are both needed.")
     payload = weights_file.read_bytes()
     info = json.loads(info_file.read_text(encoding="utf-8"))
     if info.get("sha256") and hashlib.sha256(payload).hexdigest() != info["sha256"]:

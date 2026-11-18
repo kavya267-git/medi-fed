@@ -40,7 +40,7 @@ class AgentWindow:
         server = saved.get("server") or default_server
 
         root.title("MediFed Hospital Agent")
-        root.minsize(760, 640)
+        root.minsize(980, 640)
         style = ttk.Style(root)
         try:
             style.theme_use("vista" if "vista" in style.theme_names() else "clam")
@@ -99,6 +99,7 @@ class AgentWindow:
         self.disconnect_button = ttk.Button(actions, text="Disconnect", command=self.disconnect, state="disabled")
         self.disconnect_button.pack(side="left")
         ttk.Button(actions, text="Predict…", command=self.open_predict).pack(side="left", padx=(8, 0))
+        ttk.Button(actions, text="Evaluate with labelled file…", command=self.open_evaluate).pack(side="left", padx=(8, 0))
         self.take_part = tk.BooleanVar(value=saved.get("take_part", True))
         ttk.Checkbutton(actions, text="Take part in rounds", variable=self.take_part, command=self.toggle_take_part).pack(
             side="left", padx=16
@@ -318,6 +319,11 @@ class AgentWindow:
 
         PredictWindow(self.root, self.session, self.folder.get, self._in_background, self._log)
 
+    def open_evaluate(self) -> None:
+        from .evaluate_window import EvaluateWindow
+
+        EvaluateWindow(self.root, self.session, self.folder.get, self._in_background, self._log)
+
     def close(self) -> None:
         self.session.disconnect()
         self.root.destroy()
@@ -325,6 +331,6 @@ class AgentWindow:
 
 def run_window(default_server: str) -> None:
     root = tk.Tk()
-    root.geometry("900x800")
+    root.geometry("1060x800")
     AgentWindow(root, default_server)
     root.mainloop()

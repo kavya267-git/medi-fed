@@ -206,6 +206,18 @@ class AgentSession:
             return pd.concat([frame[extra].reset_index(drop=True), scored.reset_index(drop=True)], axis=1)
         return predictor.predict_frame(frame)
 
+    def evaluate_frame(self, modality: str, folder: Optional[Path], frame, mapping) -> dict:
+        """Test the saved global model on the hospital's own labelled records: accuracy, F1, sensitivity,
+        specificity, ROC-AUC and the confusion matrix. On this machine only; the matching is not saved, so an
+        evaluation file never changes how the next export is imported."""
+        from ml.prediction.evaluate import evaluate_labelled
+
+        predictor = self.predictor(modality, folder)
+        try:
+            return evaluate_labelled(predictor, frame, mapping)
+        except ValueError as exc:
+            raise AgentError(str(exc)) from exc
+
     # ---------------------------------------------------------- prediction
     @property
     def models_dir(self) -> Path:

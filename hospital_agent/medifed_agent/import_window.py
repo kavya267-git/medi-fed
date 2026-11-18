@@ -22,6 +22,22 @@ LABELS = {"ehr": "EHR (adverse outcome)", "diabetes": "Diabetes"}
 
 
 class ImportWindow:
+    #: Texts and the main button; the Evaluate window reuses this window with its own.
+    WINDOW_TITLE = "Import your hospital's data"
+    HEADING = "Import your hospital's export"
+    INTRO = (
+        "Pick your CSV export and tell the agent which of your columns holds each measurement. Suggestions "
+        "are pre-selected; check every row. The file is read and converted on this computer only."
+    )
+    ACTION = "Import into my data folder"
+    LABEL_TITLE = "Outcome (label)"
+    FILE_BUTTON = "Choose export file…"
+    #: The patient ID only matters when an import splits the records into training and held-out.
+    ASK_PATIENT_ID = True
+
+    def modality_options(self) -> List[str]:
+        return self.session.importable_modalities()
+
     def __init__(
         self,
         parent: tk.Tk,
@@ -46,16 +62,15 @@ class ImportWindow:
         self.zero_missing = tk.BooleanVar(value=False)
 
         self.top = tk.Toplevel(parent)
-        self.top.title("Import your hospital's data")
+        self.top.title(self.WINDOW_TITLE)
         self.top.minsize(900, 700)
         self.top.geometry("1080x880")
         outer = ttk.Frame(self.top, padding=16)
         outer.pack(fill="both", expand=True)
-        ttk.Label(outer, text="Import your hospital's export", style="Title.TLabel").pack(anchor="w")
+        ttk.Label(outer, text=self.HEADING, style="Title.TLabel").pack(anchor="w")
         ttk.Label(
             outer,
-            text="Pick your CSV export and tell the agent which of your columns holds each measurement. Suggestions "
-            "are pre-selected; check every row. The file is read and converted on this computer only.",
+            text=self.INTRO,
             style="Muted.TLabel",
             wraplength=1020,
         ).pack(anchor="w", pady=(2, 10))
@@ -64,14 +79,14 @@ class ImportWindow:
         top_row.pack(fill="x")
         ttk.Label(top_row, text="Kind of data").pack(side="left")
         self.modality = tk.StringVar()
-        options = session.importable_modalities()
+        options = self.modality_options()
         self.modality_titles = {LABELS.get(m, m): m for m in options}
         self.modality_box = ttk.Combobox(
             top_row, textvariable=self.modality, values=list(self.modality_titles), state="readonly", width=26
         )
         self.modality_box.pack(side="left", padx=8)
         self.modality_box.bind("<<ComboboxSelected>>", lambda _e: self._suggest())
-        ttk.Button(top_row, text="Choose export file…", command=self.choose_file).pack(side="left", padx=8)
+        ttk.Button(top_row, text=self.FILE_BUTTON, command=self.choose_file).pack(side="left", padx=8)
         self.file_note = ttk.Label(top_row, text="No file chosen", style="Muted.TLabel")
         self.file_note.pack(side="left", padx=8)
         if options:
@@ -84,7 +99,7 @@ class ImportWindow:
 
         buttons = ttk.Frame(outer)
         buttons.pack(fill="x", pady=8)
-        self.import_button = ttk.Button(buttons, text="Import into my data folder", command=self.do_import, state="disabled")
+        self.import_button = ttk.Button(buttons, text=self.ACTION, command=self.do_import, state="disabled")
         self.import_button.pack(side="left")
         self.result = tk.Text(outer, height=7, wrap="word", font=("Segoe UI", 10), state="disabled", relief="flat")
         self.result.pack(fill="both", expand=True)
@@ -154,7 +169,7 @@ class ImportWindow:
             self.sample_labels[feature.name] = sample
         row = len(schema.features) + 1
         ttk.Separator(self.grid).grid(row=row, column=0, columnspan=3, sticky="ew", pady=6)
-        ttk.Label(self.grid, text="Outcome (label)").grid(row=row + 1, column=0, sticky="w")
+        ttk.Label(self.grid, text=self.LABEL_TITLE).grid(row=row + 1, column=0, sticky="w")
         self.label_var = tk.StringVar(value=mapping.label or NONE)
         label_box = ttk.Combobox(self.grid, textvariable=self.label_var, values=[NONE] + columns, state="readonly", width=30)
         label_box.grid(row=row + 1, column=1, sticky="w", padx=8, pady=2)
@@ -162,14 +177,15 @@ class ImportWindow:
         ttk.Label(self.grid, text=schema_label_hint(modality), style="Muted.TLabel").grid(
             row=row + 1, column=2, columnspan=2, sticky="w"
         )
-        ttk.Label(self.grid, text="Patient ID (optional)").grid(row=row + 2, column=0, sticky="w")
         self.group_var = tk.StringVar(value=mapping.group or NONE)
-        ttk.Combobox(self.grid, textvariable=self.group_var, values=[NONE] + columns, state="readonly", width=30).grid(
-            row=row + 2, column=1, sticky="w", padx=8, pady=2
-        )
-        ttk.Label(self.grid, text="keeps a patient's rows together when splitting", style="Muted.TLabel").grid(
-            row=row + 2, column=2, columnspan=2, sticky="w"
-        )
+        if self.ASK_PATIENT_ID:
+            ttk.Label(self.grid, text="Patient ID (optional)").grid(row=row + 2, column=0, sticky="w")
+            ttk.Combobox(self.grid, textvariable=self.group_var, values=[NONE] + columns, state="readonly", width=30).grid(
+                row=row + 2, column=1, sticky="w", padx=8, pady=2
+            )
+            ttk.Label(self.grid, text="keeps a patient's rows together when splitting", style="Muted.TLabel").grid(
+                row=row + 2, column=2, columnspan=2, sticky="w"
+            )
         self.saved_choices = {"label": set(mapping.label_positive), "male": set(mapping.male_values),
                               "conversions": set(mapping.conversions)}
         self.zero_missing.set(mapping.zero_means_missing)
