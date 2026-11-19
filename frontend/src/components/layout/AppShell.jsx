@@ -48,8 +48,8 @@ function Navigation({ onNavigate, layoutId = 'nav-active' }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             classNames(
-              'relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
-              isActive ? 'text-white' : 'text-muted hover:bg-brand-50 hover:text-brand-800',
+              'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
+              isActive ? 'text-brand-800' : 'text-muted hover:bg-brand-50/70 hover:text-ink',
             )
           }
         >
@@ -58,8 +58,8 @@ function Navigation({ onNavigate, layoutId = 'nav-active' }) {
               {isActive ? (
                 <motion.span
                   layoutId={layoutId}
-                  className="absolute inset-0 rounded-xl bg-linear-to-r from-brand-600 to-violet shadow-[0_8px_20px_-10px_rgb(45_89_181/0.7)]"
-                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                  className="absolute inset-0 rounded-lg bg-brand-50 ring-1 ring-brand-100"
+                  transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                   aria-hidden="true"
                 />
               ) : null}
@@ -85,7 +85,7 @@ function ModeNotice() {
   const { config } = useSystem()
   if (!config?.demo_mode) return null
   return (
-    <div className="mx-3 rounded-xl border border-brand-100 bg-brand-50/70 px-3 py-3">
+    <div className="mx-3 rounded-lg border border-line bg-canvas/60 px-3 py-3">
       <p className="text-xs font-semibold text-brand-900">Demo mode</p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
         Hospitals and data are simulated. Training and metrics are computed for real on that data.
@@ -164,7 +164,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={signOut}
-              className="inline-flex h-9 items-center gap-2 rounded-xl border border-line-strong bg-white/80 px-3 text-sm font-medium text-ink hover:bg-brand-50"
+              className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-white px-3 text-sm font-medium text-ink hover:bg-brand-50"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
               Sign out

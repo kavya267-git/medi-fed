@@ -63,7 +63,7 @@
   --color-forecast: #6a4c9c;
   --color-forecast-soft: #ede7f6;
 
-  --shadow-card: 0 1px 2px rgb(17 40 94 / 0.04), 0 8px 24px -16px rgb(17 40 94 / 0.18);
+  --shadow-card: 0 1px 2px rgb(17 26 46 / 0.05), 0 1px 1px rgb(17 26 46 / 0.03);
   --shadow-raised: 0 18px 40px -18px rgb(17 40 94 / 0.32);
 }
 
@@ -71,11 +71,7 @@
   html {
     font-family: var(--font-sans);
     color: var(--color-ink);
-    background:
-      radial-gradient(1200px 520px at 85% -10%, rgb(124 92 255 / 0.07), transparent 60%),
-      radial-gradient(900px 480px at 10% 0%, rgb(45 89 181 / 0.08), transparent 60%),
-      var(--color-canvas);
-    background-attachment: fixed;
+    background: var(--color-canvas);
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'tnum' 1; /* tabular numerals: numbers line up in tables and KPIs */
   }
@@ -107,10 +103,7 @@
 
 /* The sign-in hero: the pale sky of the illustrations, with a soft glow where the coordinator sits. */
 .hero-sky {
-  background:
-    radial-gradient(520px 360px at 50% 62%, rgb(124 92 255 / 0.14), transparent 70%),
-    radial-gradient(700px 420px at 50% 70%, rgb(45 89 181 / 0.12), transparent 70%),
-    linear-gradient(180deg, #f5f8fe 0%, #e8effb 100%);
+  background: linear-gradient(180deg, #f6f8fd 0%, #eaf0fa 100%);
 }
 
 /* The round progress pulse on the Federated Learning page (the one animated element). */

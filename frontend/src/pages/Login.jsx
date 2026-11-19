@@ -151,7 +151,7 @@ export default function Login() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h1 className="font-display text-[2.5rem] font-semibold leading-[1.08] tracking-[-0.02em] text-brand-950">
+            <h1 className="font-display text-[2.3rem] font-semibold leading-[1.12] tracking-[-0.02em] text-brand-950">
               Hospitals train shared models together. Patient records stay where they are.
             </h1>
             <p className="mt-5 max-w-lg text-base leading-relaxed text-muted">

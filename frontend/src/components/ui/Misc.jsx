@@ -42,7 +42,7 @@ export function AnimatedNumber({ value }) {
 /** One headline number with its label and an optional line of context. */
 export function Stat({ label, value, detail, icon: Icon }) {
   return (
-    <div className="rounded-2xl border border-line/80 bg-surface px-5 py-4 shadow-card">
+    <div className="rounded-xl border border-line bg-surface px-5 py-4 shadow-card">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted">{label}</p>
         {Icon ? (
@@ -109,7 +109,7 @@ export function Field({ label, hint, children, htmlFor }) {
 }
 
 export const inputClass =
-  'block h-10 w-full rounded-xl border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-faint ' +
+  'block h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-faint ' +
   'focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-canvas disabled:text-faint'
 
 export function Select({ value, onChange, options, id, className = '', ...rest }) {

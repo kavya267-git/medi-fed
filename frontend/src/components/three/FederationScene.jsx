@@ -1,109 +1,47 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Line, RoundedBox } from '@react-three/drei'
+import { Line } from '@react-three/drei'
 import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 /*
-  The federation in 3D: a glowing coordinator core in the middle, hospitals on a ring around it.
-  Blue particles travel from each hospital to the core (model updates), violet ones travel back
-  (the new global model). Nothing here is data; it illustrates what one round does.
+  A quiet, data-like picture of the federation: a globe drawn as fine dots, hospitals as points on
+  its surface, and thin arcs to the coordinator. Small pulses run along the arcs: model updates in
+  (blue) and the new global model out (violet). It illustrates one round; it is not data.
 */
 
-const BLUE = '#2d59b5'
-const VIOLET = '#7c5cff'
-const SKY = '#8fb4f5'
+const RADIUS = 2
+const DOT = '#7f9ddb'
+const NODE = '#2d59b5'
+const ARC = '#7d9be0'
+const IN = '#2d59b5'
+const OUT = '#7c5cff'
 
-function arcBetween(from, to, lift) {
+function fibonacciSphere(count, radius) {
+  const positions = new Float32Array(count * 3)
+  const golden = Math.PI * (3 - Math.sqrt(5))
+  for (let i = 0; i < count; i += 1) {
+    const y = 1 - (i / (count - 1)) * 2
+    const r = Math.sqrt(1 - y * y)
+    const theta = golden * i
+    positions.set([Math.cos(theta) * r * radius, y * radius, Math.sin(theta) * r * radius], i * 3)
+  }
+  return positions
+}
+
+function onSphere(lat, lon, radius = RADIUS) {
+  const phi = THREE.MathUtils.degToRad(90 - lat)
+  const theta = THREE.MathUtils.degToRad(lon)
+  return new THREE.Vector3(radius * Math.sin(phi) * Math.cos(theta), radius * Math.cos(phi), radius * Math.sin(phi) * Math.sin(theta))
+}
+
+function arc(from, to) {
   const mid = from.clone().add(to).multiplyScalar(0.5)
-  mid.y += lift
+  const lift = 1 + from.distanceTo(to) / (RADIUS * 2.2)
+  mid.normalize().multiplyScalar(RADIUS * lift)
   return new THREE.QuadraticBezierCurve3(from, mid, to)
 }
 
-function Core({ active }) {
-  const shell = useRef()
-  const ringA = useRef()
-  const ringB = useRef()
-  const glow = useRef()
-  useFrame((state, delta) => {
-    const speed = active ? 2.2 : 1
-    shell.current.rotation.y += delta * 0.25 * speed
-    shell.current.rotation.x += delta * 0.1 * speed
-    ringA.current.rotation.z += delta * 0.4 * speed
-    ringB.current.rotation.z -= delta * 0.3 * speed
-    const pulse = 1 + Math.sin(state.clock.elapsedTime * (active ? 4 : 2)) * 0.04
-    glow.current.scale.setScalar(pulse)
-  })
-  return (
-    <group position={[0, 0.35, 0]}>
-      <mesh ref={glow}>
-        <sphereGeometry args={[0.62, 48, 48]} />
-        <meshStandardMaterial color={BLUE} emissive={BLUE} emissiveIntensity={0.9} roughness={0.25} metalness={0.1} />
-      </mesh>
-      <mesh>
-        <sphereGeometry args={[0.95, 32, 32]} />
-        <meshBasicMaterial color={SKY} transparent opacity={0.16} depthWrite={false} />
-      </mesh>
-      <mesh ref={shell}>
-        <icosahedronGeometry args={[1.05, 1]} />
-        <meshBasicMaterial color={VIOLET} wireframe transparent opacity={0.45} />
-      </mesh>
-      <mesh ref={ringA} rotation={[Math.PI / 2.3, 0, 0]}>
-        <torusGeometry args={[1.35, 0.012, 8, 96]} />
-        <meshBasicMaterial color={BLUE} transparent opacity={0.55} />
-      </mesh>
-      <mesh ref={ringB} rotation={[Math.PI / 1.7, 0.4, 0]}>
-        <torusGeometry args={[1.55, 0.01, 8, 96]} />
-        <meshBasicMaterial color={VIOLET} transparent opacity={0.4} />
-      </mesh>
-      {/* Server base under the core, like the illustration. */}
-      <mesh position={[0, -1.05, 0]}>
-        <cylinderGeometry args={[1.0, 1.12, 0.1, 48]} />
-        <meshStandardMaterial color="#d6e4fb" roughness={0.7} />
-      </mesh>
-    </group>
-  )
-}
-
-function Hospital({ position, online, index }) {
-  const group = useRef()
-  useFrame((state) => {
-    group.current.position.y = position.y + Math.sin(state.clock.elapsedTime * 1.2 + index) * 0.05
-  })
-  return (
-    <group ref={group} position={position.toArray()}>
-      <mesh position={[0, -0.32, 0]}>
-        <cylinderGeometry args={[0.5, 0.54, 0.08, 40]} />
-        <meshStandardMaterial color={online ? '#cfe0fb' : '#e4e8ee'} roughness={0.8} />
-      </mesh>
-      <RoundedBox args={[0.62, 0.5, 0.48]} radius={0.06} smoothness={3}>
-        <meshStandardMaterial color="#ffffff" roughness={0.45} />
-      </RoundedBox>
-      <RoundedBox args={[0.36, 0.26, 0.34]} radius={0.04} smoothness={3} position={[0, 0.36, 0]}>
-        <meshStandardMaterial color={online ? '#eef4ff' : '#f1f3f6'} roughness={0.45} />
-      </RoundedBox>
-      {/* Red cross on the front face. */}
-      <group position={[0, 0.37, 0.175]}>
-        <mesh>
-          <boxGeometry args={[0.16, 0.05, 0.01]} />
-          <meshBasicMaterial color={online ? '#e5484d' : '#b8bfc9'} />
-        </mesh>
-        <mesh>
-          <boxGeometry args={[0.05, 0.16, 0.01]} />
-          <meshBasicMaterial color={online ? '#e5484d' : '#b8bfc9'} />
-        </mesh>
-      </group>
-      {/* Windows. */}
-      {[-0.16, 0, 0.16].map((x) => (
-        <mesh key={x} position={[x, 0.02, 0.245]}>
-          <boxGeometry args={[0.09, 0.12, 0.01]} />
-          <meshStandardMaterial color="#9fbdf0" emissive="#5b8de8" emissiveIntensity={online ? 0.35 : 0} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-function Packet({ curve, color, offset, speed, reverse }) {
+function Pulse({ curve, color, offset, speed, reverse }) {
   const mesh = useRef()
   const point = useMemo(() => new THREE.Vector3(), [])
   useFrame((state) => {
@@ -111,75 +49,117 @@ function Packet({ curve, color, offset, speed, reverse }) {
     if (reverse) t = 1 - t
     curve.getPoint(t, point)
     mesh.current.position.copy(point)
-    const fade = Math.sin(Math.PI * t)
-    mesh.current.scale.setScalar(0.6 + fade * 0.6)
+    mesh.current.material.opacity = Math.sin(Math.PI * t)
   })
   return (
     <mesh ref={mesh}>
-      <sphereGeometry args={[0.075, 16, 16]} />
-      <meshBasicMaterial color={color} />
+      <sphereGeometry args={[0.03, 12, 12]} />
+      <meshBasicMaterial color={color} transparent />
     </mesh>
   )
 }
 
-function Federation({ hospitals, active, pointerTilt }) {
-  const root = useRef()
-  const nodes = useMemo(() => {
-    const count = Math.max(1, hospitals.length)
-    return hospitals.map((hospital, index) => {
-      const angle = (index / count) * Math.PI * 2 + Math.PI / 4
-      const position = new THREE.Vector3(Math.cos(angle) * 2.9, -0.35, Math.sin(angle) * 2.0)
-      const curve = arcBetween(position.clone().add(new THREE.Vector3(0, 0.3, 0)), new THREE.Vector3(0, 0.35, 0), 1.1)
-      return { ...hospital, position, curve, points: curve.getPoints(40) }
-    })
-  }, [hospitals])
-
-  useFrame((state, delta) => {
-    root.current.rotation.y += delta * (active ? 0.12 : 0.06)
-    if (pointerTilt) {
-      const targetX = state.pointer.y * 0.12
-      root.current.rotation.x += (targetX - root.current.rotation.x) * 0.05
-    }
+function Node({ position, color, size = 0.045, halo = true }) {
+  const ring = useRef()
+  const quaternion = useMemo(
+    () => new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 0, 1), position.clone().normalize()),
+    [position],
+  )
+  useFrame((state) => {
+    if (!ring.current) return
+    const t = (state.clock.elapsedTime * 0.6 + Math.abs(position.x)) % 1
+    ring.current.scale.setScalar(1 + t * 1.2)
+    ring.current.material.opacity = 0.35 * (1 - t)
   })
-
-  const speed = active ? 0.42 : 0.22
   return (
-    <group ref={root}>
-      <Core active={active} />
-      {nodes.map((node, index) => (
-        <group key={node.id ?? index}>
-          <Hospital position={node.position} online={node.online !== false} index={index} />
-          <Line points={node.points} color={node.online === false ? '#c5ccd8' : '#7fa3e8'} lineWidth={1.2} dashed dashSize={0.12} gapSize={0.09} transparent opacity={0.8} />
-          {node.online === false ? null : (
-            <>
-              <Packet curve={node.curve} color={BLUE} offset={index * 0.17} speed={speed} />
-              <Packet curve={node.curve} color={VIOLET} offset={index * 0.17 + 0.5} speed={speed} reverse />
-            </>
-          )}
-        </group>
-      ))}
+    <group position={position.toArray()}>
+      <mesh>
+        <sphereGeometry args={[size, 16, 16]} />
+        <meshBasicMaterial color={color} />
+      </mesh>
+      {halo ? (
+        <mesh ref={ring} quaternion={quaternion}>
+          <ringGeometry args={[size * 1.5, size * 1.75, 32]} />
+          <meshBasicMaterial color={color} transparent side={THREE.DoubleSide} depthWrite={false} />
+        </mesh>
+      ) : null}
     </group>
   )
 }
 
-export default function FederationScene({ hospitals, active = false, reducedMotion = false, pointerTilt = true, cameraZ = 7.1 }) {
+// Hospitals spread over the visible face of the globe; the coordinator sits among them.
+const SPOTS = [
+  [44, 20], [-22, 28], [40, 88], [-26, 80], [8, 0], [10, 104], [52, 55], [-40, 52],
+]
+const COORDINATOR = [14, 52]
+
+function Globe({ hospitals, active }) {
+  const root = useRef()
+  const dots = useMemo(() => fibonacciSphere(2600, RADIUS), [])
+  const hub = useMemo(() => onSphere(...COORDINATOR, RADIUS * 1.01), [])
+  const links = useMemo(
+    () =>
+      hospitals.map((hospital, index) => {
+        const position = onSphere(...SPOTS[index % SPOTS.length], RADIUS * 1.01)
+        const curve = arc(position, hub)
+        return { ...hospital, position, curve, points: curve.getPoints(48) }
+      }),
+    [hospitals, hub],
+  )
+
+  useFrame((state, delta) => {
+    root.current.rotation.y += delta * 0.035
+    const targetX = 0.18 + state.pointer.y * 0.06
+    root.current.rotation.x += (targetX - root.current.rotation.x) * 0.04
+  })
+
+  const speed = active ? 0.5 : 0.28
+  return (
+    <group ref={root} rotation={[0.18, -0.9, 0]}>
+      <points renderOrder={1}>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" args={[dots, 3]} />
+        </bufferGeometry>
+        <pointsMaterial color={DOT} size={0.03} sizeAttenuation transparent opacity={0.85} depthWrite={false} />
+      </points>
+      {/* A faint body so dots on the far side read as further away. */}
+      <mesh renderOrder={0}>
+        <sphereGeometry args={[RADIUS * 0.985, 48, 48]} />
+        <meshBasicMaterial color="#f3f6fd" transparent opacity={0.6} depthWrite />
+      </mesh>
+      <Node position={hub} color={OUT} size={0.06} />
+      {links.map((link, index) => {
+        const online = link.online !== false
+        return (
+          <group key={link.id ?? index}>
+            <Line points={link.points} color={online ? ARC : '#c9d1de'} lineWidth={1} transparent opacity={online ? 0.75 : 0.5} />
+            <Node position={link.position} color={online ? NODE : '#a5afbf'} halo={online} />
+            {online ? (
+              <>
+                <Pulse curve={link.curve} color={IN} offset={index * 0.23} speed={speed} />
+                <Pulse curve={link.curve} color={OUT} offset={index * 0.23 + 0.5} speed={speed} reverse />
+              </>
+            ) : null}
+          </group>
+        )
+      })}
+    </group>
+  )
+}
+
+export default function FederationScene({ hospitals, active = false, reducedMotion = false, cameraZ = 7 }) {
   const list = hospitals?.length ? hospitals : [{ id: 'a' }, { id: 'b' }, { id: 'c' }, { id: 'd' }]
   return (
     <Canvas
       aria-hidden="true"
+      flat
       dpr={[1, 2]}
       frameloop={reducedMotion ? 'demand' : 'always'}
-      flat
-      camera={{ position: [0, 3.4, cameraZ], fov: 38 }}
-      onCreated={({ camera }) => camera.lookAt(0, 0, 0)}
+      camera={{ position: [0, 0, cameraZ], fov: 36 }}
       gl={{ antialias: true, alpha: true, powerPreference: 'low-power' }}
       style={{ background: 'transparent' }}
     >
-      <ambientLight intensity={1.6} />
-      <directionalLight position={[4, 8, 5]} intensity={1.8} color="#ffffff" />
-      <directionalLight position={[-6, 3, -4]} intensity={0.5} color={SKY} />
-      <pointLight position={[0, 0.4, 0]} intensity={6} distance={5} color={BLUE} />
-      <Federation hospitals={list} active={active} pointerTilt={pointerTilt && !reducedMotion} />
+      <Globe hospitals={list} active={active} />
     </Canvas>
   )
 }

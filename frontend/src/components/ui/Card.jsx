@@ -2,7 +2,7 @@ import { classNames } from '../../utils/format'
 
 export function Card({ children, className = '', as: Tag = 'section', ...rest }) {
   return (
-    <Tag className={classNames('rounded-2xl border border-line/80 bg-surface shadow-card', className)} {...rest}>
+    <Tag className={classNames('rounded-xl border border-line bg-surface shadow-card', className)} {...rest}>
       {children}
     </Tag>
   )

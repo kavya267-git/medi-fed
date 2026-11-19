@@ -41,7 +41,7 @@ function FederationBanner({ data }) {
   return (
     <section
       aria-label="Federation status"
-      className="relative overflow-hidden rounded-3xl border border-brand-100 bg-linear-to-br from-white via-brand-50 to-violet-soft shadow-card"
+      className="relative overflow-hidden rounded-xl border border-line bg-surface shadow-card"
     >
       <div className="grid items-center md:grid-cols-[1fr_1.1fr]">
         <div className="relative z-10 px-6 py-6 md:px-8 md:py-8">
@@ -59,11 +59,11 @@ function FederationBanner({ data }) {
           <div className="mt-5 flex flex-wrap gap-2">
             <Link
               to="/federated"
-              className="inline-flex h-9 items-center rounded-xl bg-linear-to-r from-brand-600 to-brand-500 px-4 text-sm font-medium text-white shadow-[0_8px_18px_-10px_rgb(45_89_181/0.8)] hover:from-brand-700 hover:to-brand-600"
+              className="inline-flex h-9 items-center rounded-lg bg-brand-700 px-4 text-sm font-medium text-white hover:bg-brand-800"
             >
               {active ? 'Watch the round' : 'Open Federated Learning'}
             </Link>
-            <Link to="/hospitals" className="inline-flex h-9 items-center rounded-xl px-3 text-sm font-medium text-brand-700 hover:bg-white/70">
+            <Link to="/hospitals" className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-brand-700 hover:bg-brand-50">
               See hospitals
             </Link>
           </div>
@@ -71,7 +71,7 @@ function FederationBanner({ data }) {
         <FederationHero
           hospitals={hospitals}
           active={Boolean(active)}
-          cameraZ={6.6}
+          cameraZ={7.2}
           className="h-56 md:h-64"
           fallback={<img src={WORLD_IMAGE.src} alt="" className="fade-edges h-56 w-full object-contain md:h-64" />}
         />
@@ -394,7 +394,7 @@ export default function Dashboard() {
                   }
                   icon={Activity}
                 />
-                <div className="rounded-2xl border border-line/80 bg-surface px-5 py-4 shadow-card">
+                <div className="rounded-xl border border-line bg-surface px-5 py-4 shadow-card">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm text-muted">Global model performance</p>
                     <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-50 text-brand-600">
