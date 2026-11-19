@@ -227,3 +227,17 @@ def test_impossible_zeros_are_detected_in_diabetes_exports():
                           "Outcome": [0, 1, 1, 0]})
     report = inspect_export(frame, suggest_mapping("diabetes", frame.columns))
     assert report["impossible_zeros"] == ["glucose", "bmi"]
+
+
+def test_empty_outcome_column_gives_a_clear_message(tmp_path):
+    import pandas as pd
+    import pytest
+    from ml.common.column_mapping import import_export, suggest_mapping
+
+    frame = pd.DataFrame({
+        "Glucose": [120, 90, 150] * 5, "BMI": [30, 25, 35] * 5, "Age": [40, 30, 50] * 5, "Outcome": [None] * 15,
+    })
+    mapping = suggest_mapping("diabetes", list(frame.columns), frame)
+    mapping.label = "Outcome"
+    with pytest.raises(ValueError, match="empty in every row"):
+        import_export(frame, mapping, tmp_path)

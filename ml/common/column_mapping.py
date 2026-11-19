@@ -437,6 +437,13 @@ def import_export(
     keep = table[schema.label_column].notna()
     dropped = int((~keep).sum())
     table = table[keep]
+    if table.empty:
+        raise ValueError(
+            f"The outcome column '{mapping.label}' is empty in every row, so there is nothing to train on. "
+            "Choose the column that holds the outcome, or add the outcomes to the file."
+        )
+    if len(table) < 10:
+        raise ValueError(f"Only {len(table)} row(s) have an outcome. Import at least 10 records with a known outcome.")
     labels = table[schema.label_column].to_numpy()
     if not set(np.unique(labels)) <= {0, 1}:
         raise ValueError("The outcome must be yes / no. Tick which values of the outcome column mean 'yes'.")

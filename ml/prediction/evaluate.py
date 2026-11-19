@@ -99,6 +99,11 @@ def labelled_table(frame: pd.DataFrame, mapping: ColumnMapping) -> tuple:
     keep = label.notna()
     report["dropped_without_label"] = int((~keep).sum())
     table = table[keep]
+    if table.empty:
+        raise ValueError(
+            f"The outcome column '{mapping.label}' is empty in every row, so there is nothing to test against. "
+            "Choose the column that holds the true answer."
+        )
     y = table[schema.label_column].to_numpy()
     if not set(np.unique(y)) <= {0, 1}:
         raise ValueError("The true answer must be yes / no. Tick which values of the outcome column mean 'yes'.")
