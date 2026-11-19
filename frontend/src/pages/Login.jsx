@@ -154,7 +154,7 @@ export default function Login() {
           >
             <h1 className="font-display text-[2.35rem] font-bold uppercase leading-[1.08] tracking-[-0.01em] text-white">
               Shared AI for hospitals.
-              <span className="block text-brand-500">Records stay home.</span>
+              <span className="text-sand-gradient block">Records stay home.</span>
             </h1>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted">
               Each hospital trains on its own EHR, ECG, X-ray and diabetes data. Only model updates travel to the coordinator, which

@@ -58,7 +58,7 @@ function Navigation({ onNavigate, layoutId = 'nav-active' }) {
               {isActive ? (
                 <motion.span
                   layoutId={layoutId}
-                  className="absolute inset-0 rounded-full bg-cta"
+                  className="absolute inset-0 rounded-full bg-cta-gradient"
                   transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                   aria-hidden="true"
                 />

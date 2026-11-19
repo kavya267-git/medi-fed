@@ -216,7 +216,7 @@ export function ConnectHospital({ connection, onChanged }) {
           </p>
           <a
             href={AGENT_DOWNLOAD_URL}
-            className="inline-flex items-center gap-2 rounded-md bg-cta px-4 py-2 text-sm font-medium text-cta-ink hover:bg-brand-800"
+            className="inline-flex items-center gap-2 rounded-md bg-cta-gradient px-4 py-2 text-sm font-medium text-cta-ink hover:bg-brand-800"
           >
             <Download className="h-4 w-4" aria-hidden="true" />
             Download MediFed Hospital Agent for Windows

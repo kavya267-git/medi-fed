@@ -36,9 +36,13 @@
   --color-brand-100: #2b486f;
   --color-brand-50: #223b60;
 
-  /* Call-to-action: white pill, navy text (as in the brand reference). */
-  --color-cta: #ffffff;
-  --color-cta-ink: #12233c;
+  /* Call-to-action: the beige gradient (sand to mocha) with black text, as in the brand reference.
+     Black on mocha #9a8a7f is 6.2:1. */
+  --color-cta: #d8c1ad;
+  --color-cta-ink: #0d0d0d;
+  --color-sand: #d8c1ad;
+  --color-mocha: #9a8a7f;
+  --color-noir: #0d0d0d;
 
   --color-violet: #a99bff;
   --color-violet-soft: rgb(169 155 255 / 0.16);
@@ -76,9 +80,9 @@
     font-family: var(--font-sans);
     color: var(--color-ink);
     background:
-      radial-gradient(900px 600px at 85% -5%, rgb(128 160 197 / 0.22), transparent 60%),
-      radial-gradient(800px 600px at 0% 100%, rgb(81 109 141 / 0.25), transparent 60%),
-      linear-gradient(160deg, #0f1e34 0%, #172b48 55%, #213c62 100%);
+      radial-gradient(900px 600px at 88% -8%, rgb(198 171 149 / 0.16), transparent 60%),
+      radial-gradient(800px 600px at 0% 0%, rgb(128 160 197 / 0.18), transparent 60%),
+      linear-gradient(160deg, #1a3050 0%, #12233c 40%, #0d0d0d 100%);
     background-attachment: fixed;
     color-scheme: dark;
     -webkit-font-smoothing: antialiased;
@@ -114,6 +118,20 @@
 /* The sign-in hero: the pale sky of the illustrations, with a soft glow where the coordinator sits. */
 .hero-sky {
   background: transparent;
+}
+
+/* The beige gradient of the brand reference: buttons, the active page and accents. */
+.bg-cta-gradient {
+  background-image: linear-gradient(100deg, var(--color-sand) 0%, var(--color-mocha) 100%);
+}
+.bg-cta-gradient:hover {
+  background-image: linear-gradient(100deg, #e6d3c2 0%, #ab9a8e 100%);
+}
+.text-sand-gradient {
+  background-image: linear-gradient(100deg, #e8d5c3 0%, #c6ab95 55%, #9a8a7f 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* Frosted panel used for cards and the sign-in form. */

@@ -20,7 +20,7 @@ export function RoundStepper({ status }) {
                   : done
                     ? 'bg-brand-50 text-brand-700'
                     : current
-                      ? 'bg-cta text-cta-ink'
+                      ? 'bg-cta-gradient text-cta-ink'
                       : 'bg-canvas text-faint',
               )}
             >

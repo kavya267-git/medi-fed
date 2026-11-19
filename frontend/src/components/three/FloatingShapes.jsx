@@ -27,10 +27,10 @@ function Cross(props) {
   return (
     <group {...props}>
       <RoundedBox args={[0.42, 1.3, 0.42]} radius={0.12} smoothness={6}>
-        <Material tint="#dce7f4" roughness={0.12} />
+        <Material tint="#e6d3c2" roughness={0.12} />
       </RoundedBox>
       <RoundedBox args={[1.3, 0.42, 0.42]} radius={0.12} smoothness={6}>
-        <Material tint="#dce7f4" roughness={0.12} />
+        <Material tint="#e6d3c2" roughness={0.12} />
       </RoundedBox>
     </group>
   )
@@ -41,7 +41,7 @@ function Capsule(props) {
     <group {...props}>
       <mesh position={[0, 0.32, 0]}>
         <capsuleGeometry args={[0.3, 0.64, 12, 32]} />
-        <Material tint="#80a0c5" />
+        <Material tint="#1a1a1a" roughness={0.08} />
       </mesh>
     </group>
   )
@@ -60,7 +60,7 @@ function Gem(props) {
   return (
     <mesh {...props}>
       <icosahedronGeometry args={[0.55, 0]} />
-      <Material tint="#a99bff" roughness={0.08} />
+      <Material tint="#c6ab95" roughness={0.08} />
     </mesh>
   )
 }
@@ -91,17 +91,17 @@ const LAYOUTS = {
     ['capsule', [2.05, -0.1, 0.4], 0.5],
     ['ring', [-2.15, -0.9, 0], 0.55],
     ['gem', [1.85, -2.45, -0.3], 0.5],
-    ['orb', [-2.0, 0.9, 0.6], 0.35],
+    ['orb', [-2.0, 0.9, 0.6], 0.35, '#1a1a1a'],
     ['orb', [-0.6, -3.0, -1], 0.35],
-    ['orb', [2.3, 1.0, -1.6], 0.35],
+    ['orb', [2.3, 1.0, -1.6], 0.35, '#c6ab95'],
   ],
   banner: [
     ['cross', [1.2, 0.5, 0], 0.9],
     ['ring', [3.1, -0.4, -0.6], 0.8],
     ['capsule', [-0.6, -0.9, -0.8], 0.75],
     ['gem', [2.6, 1.3, -1.2], 0.6],
-    ['orb', [-1.3, 1.1, -1.4], 0.7],
-    ['orb', [4.0, 0.9, -1.8], 0.6],
+    ['orb', [-1.3, 1.1, -1.4], 0.7, '#c6ab95'],
+    ['orb', [4.0, 0.9, -1.8], 0.6, '#1a1a1a'],
   ],
 }
 
@@ -121,7 +121,7 @@ export default function FloatingShapes({ variant = 'hero', reducedMotion = false
       <ambientLight intensity={0.6} />
       <directionalLight position={[3, 5, 4]} intensity={1.2} />
       <Drift>
-        {layout.map(([kind, position, scale], index) => {
+        {layout.map(([kind, position, scale, tint], index) => {
           const Shape = SHAPES[kind]
           return (
             <Float
@@ -131,7 +131,7 @@ export default function FloatingShapes({ variant = 'hero', reducedMotion = false
               floatIntensity={reducedMotion ? 0 : 1.2}
               floatingRange={[-0.15, 0.15]}
             >
-              <Shape position={position} scale={scale} rotation={[0.3 * index, 0.5 * index, 0.2]} />
+              <Shape position={position} scale={scale} rotation={[0.3 * index, 0.5 * index, 0.2]} {...(tint ? { tint } : {})} />
             </Float>
           )
         })}
@@ -140,7 +140,7 @@ export default function FloatingShapes({ variant = 'hero', reducedMotion = false
       <Environment resolution={256} frames={1}>
         <Lightformer form="rect" intensity={3} position={[0, 4, 3]} scale={[8, 2, 1]} color="#ffffff" />
         <Lightformer form="rect" intensity={1.6} position={[-5, 0, 2]} rotation-y={Math.PI / 2} scale={[6, 4, 1]} color="#80a0c5" />
-        <Lightformer form="rect" intensity={1.4} position={[5, -1, 2]} rotation-y={-Math.PI / 2} scale={[6, 4, 1]} color="#a99bff" />
+        <Lightformer form="rect" intensity={1.4} position={[5, -1, 2]} rotation-y={-Math.PI / 2} scale={[6, 4, 1]} color="#e6d3c2" />
         <Lightformer form="ring" intensity={2} position={[0, -3, 4]} scale={3} color="#dce7f4" />
       </Environment>
     </Canvas>

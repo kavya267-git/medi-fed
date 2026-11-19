@@ -145,7 +145,7 @@ export function Tabs({ value, onChange, options, label }) {
             onClick={() => onChange(option.value)}
             className={classNames(
               'rounded px-3.5 py-1.5 text-sm font-medium transition-colors',
-              selected ? 'bg-cta text-cta-ink' : 'text-muted hover:text-ink',
+              selected ? 'bg-cta-gradient text-cta-ink' : 'text-muted hover:text-ink',
             )}
           >
             {option.label}

@@ -45,7 +45,7 @@ function FederationBanner({ data }) {
           <p className="text-sm font-medium text-brand-600">{active ? 'Training now' : 'Federation'}</p>
           <p className="mt-2 font-display text-[1.9rem] font-bold uppercase leading-[1.1] text-white">
             {kpis.hospitals_online} of {kpis.participating_hospitals} hospitals
-            <span className="block text-brand-500">online now</span>
+            <span className="text-sand-gradient block">online now</span>
           </p>
           <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
             {active
@@ -57,10 +57,10 @@ function FederationBanner({ data }) {
           <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               to="/federated"
-              className="inline-flex h-11 items-center gap-3 rounded-full bg-cta pl-5 pr-1.5 text-sm font-semibold text-cta-ink hover:bg-brand-900"
+              className="inline-flex h-11 items-center gap-3 rounded-full bg-cta-gradient pl-5 pr-1.5 text-sm font-semibold text-cta-ink"
             >
               {active ? 'Watch the round' : 'Open Federated Learning'}
-              <span className="grid h-8 w-8 place-items-center rounded-full bg-cta-ink text-white" aria-hidden="true">
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-noir text-white" aria-hidden="true">
                 <ArrowRight className="h-4 w-4" />
               </span>
             </Link>

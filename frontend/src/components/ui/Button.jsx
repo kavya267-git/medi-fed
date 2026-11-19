@@ -2,7 +2,7 @@ import { LoaderCircle } from 'lucide-react'
 import { classNames } from '../../utils/format'
 
 const VARIANTS = {
-  primary: 'bg-cta text-cta-ink hover:bg-brand-900 disabled:bg-white/40',
+  primary: 'bg-cta-gradient text-cta-ink disabled:opacity-50',
   secondary: 'border border-white/20 bg-white/5 text-ink hover:bg-white/10 disabled:text-faint',
   danger: 'border border-alert/40 bg-transparent text-alert hover:bg-alert-soft disabled:text-faint',
   ghost: 'text-brand-700 hover:bg-white/10 disabled:text-faint',

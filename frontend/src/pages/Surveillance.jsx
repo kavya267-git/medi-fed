@@ -102,7 +102,7 @@ function SurveillanceResult({ data, selectedId, onSelect }) {
                       role="radio"
                       aria-checked={basemap === id}
                       onClick={() => setBasemap(id)}
-                      className={`rounded-full px-3 py-1 font-medium ${basemap === id ? 'bg-cta text-cta-ink' : 'text-muted hover:text-ink'}`}
+                      className={`rounded-full px-3 py-1 font-medium ${basemap === id ? 'bg-cta-gradient text-cta-ink' : 'text-muted hover:text-ink'}`}
                     >
                       {label}
                     </button>
