@@ -1,10 +1,10 @@
 import { Canvas, useFrame } from '@react-three/fiber'
-import { Environment, Float, Lightformer, RoundedBox } from '@react-three/drei'
+import { Environment, Float, Lightformer } from '@react-three/drei'
 import { useRef } from 'react'
 
 /*
-  Floating steel-blue shapes for the hero areas: a medical cross, a capsule, a ring, a gem and a few
-  spheres, drifting slowly. Lit by soft studio panels (built in code, no downloads), so they read as
+  Floating shapes for the hero areas: rings, a gem and a few spheres in steel blue, beige and black,
+  drifting slowly. Lit by soft studio panels (built in code, no downloads), so they read as
   polished glass-metal against the navy page. Decoration only; hidden from assistive technology.
 */
 
@@ -23,44 +23,20 @@ function Material({ tint = '#9db8d8', roughness = 0.18 }) {
   )
 }
 
-function Cross(props) {
-  return (
-    <group {...props}>
-      <RoundedBox args={[0.42, 1.3, 0.42]} radius={0.12} smoothness={6}>
-        <Material tint="#e6d3c2" roughness={0.12} />
-      </RoundedBox>
-      <RoundedBox args={[1.3, 0.42, 0.42]} radius={0.12} smoothness={6}>
-        <Material tint="#e6d3c2" roughness={0.12} />
-      </RoundedBox>
-    </group>
-  )
-}
-
-function Capsule(props) {
-  return (
-    <group {...props}>
-      <mesh position={[0, 0.32, 0]}>
-        <capsuleGeometry args={[0.3, 0.64, 12, 32]} />
-        <Material tint="#1a1a1a" roughness={0.08} />
-      </mesh>
-    </group>
-  )
-}
-
-function Ring(props) {
+function Ring({ tint = '#c3d5ea', ...props }) {
   return (
     <mesh {...props}>
       <torusGeometry args={[0.62, 0.17, 32, 96]} />
-      <Material tint="#c3d5ea" roughness={0.1} />
+      <Material tint={tint} roughness={0.1} />
     </mesh>
   )
 }
 
-function Gem(props) {
+function Gem({ tint = '#c6ab95', ...props }) {
   return (
     <mesh {...props}>
       <icosahedronGeometry args={[0.55, 0]} />
-      <Material tint="#c6ab95" roughness={0.08} />
+      <Material tint={tint} roughness={0.08} />
     </mesh>
   )
 }
@@ -87,25 +63,24 @@ function Drift({ children }) {
 // Positions for the two layouts: around a centred picture (hero) or to the side of a banner.
 const LAYOUTS = {
   hero: [
-    ['cross', [1.9, 2.4, -0.8], 0.7],
-    ['capsule', [2.05, -0.1, 0.4], 0.5],
-    ['ring', [-2.15, -0.9, 0], 0.55],
-    ['gem', [1.85, -2.45, -0.3], 0.5],
-    ['orb', [-2.0, 0.9, 0.6], 0.35, '#1a1a1a'],
-    ['orb', [-0.6, -3.0, -1], 0.35],
-    ['orb', [2.3, 1.0, -1.6], 0.35, '#c6ab95'],
+    ['ring', [1.35, 2.35, -0.8], 0.6],
+    ['orb', [2.1, -0.1, 0.4], 0.42, '#1a1a1a'],
+    ['ring', [-1.85, -1.05, 0], 0.45, '#c6ab95'],
+    ['gem', [1.7, -2.3, -0.3], 0.48],
+    ['orb', [1.95, 1.05, -0.4], 0.26, '#c6ab95'],
+    ['orb', [-1.2, -2.35, -1], 0.3],
   ],
   banner: [
-    ['cross', [1.2, 0.5, 0], 0.9],
-    ['ring', [3.1, -0.4, -0.6], 0.8],
-    ['capsule', [-0.6, -0.9, -0.8], 0.75],
-    ['gem', [2.6, 1.3, -1.2], 0.6],
-    ['orb', [-1.3, 1.1, -1.4], 0.7, '#c6ab95'],
-    ['orb', [4.0, 0.9, -1.8], 0.6, '#1a1a1a'],
+    ['ring', [1.2, 0.5, 0], 0.65],
+    ['gem', [3.0, -0.5, -0.6], 0.55],
+    ['orb', [-0.6, -0.9, -0.8], 0.5, '#1a1a1a'],
+    ['orb', [2.6, 1.3, -1.2], 0.45, '#c6ab95'],
+    ['orb', [-1.3, 1.1, -1.4], 0.6, '#c6ab95'],
+    ['orb', [4.0, 0.9, -1.8], 0.5, '#1a1a1a'],
   ],
 }
 
-const SHAPES = { cross: Cross, capsule: Capsule, ring: Ring, gem: Gem, orb: Orb }
+const SHAPES = { ring: Ring, gem: Gem, orb: Orb }
 
 export default function FloatingShapes({ variant = 'hero', reducedMotion = false }) {
   const layout = LAYOUTS[variant] || LAYOUTS.hero
