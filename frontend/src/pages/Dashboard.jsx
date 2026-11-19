@@ -1,7 +1,6 @@
 import { Activity, ArrowRight, Building2, Layers, Stethoscope } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { WORLD_IMAGE } from '../assets/illustrations'
-import { FloatingLayer } from '../components/three/FloatingLayer'
 import { HotspotStatusBadge, ModalityTag, RoundStatusBadge, SimulatedTag } from '../components/ui/Badge'
 import { Card, CardBody, CardHeader } from '../components/ui/Card'
 import { PageHeader, Stat } from '../components/ui/Misc'
@@ -39,7 +38,6 @@ function FederationBanner({ data }) {
   const active = data.active_rounds[0]
     return (
     <section aria-label="Federation status" className="glass relative overflow-hidden rounded-[28px] shadow-card">
-      <FloatingLayer variant="banner" className="pointer-events-none absolute inset-0" />
       <div className="relative grid items-center gap-6 md:grid-cols-[1fr_1fr]">
         <div className="px-6 py-7 md:px-9 md:py-9">
           <p className="text-sm font-medium text-brand-600">{active ? 'Training now' : 'Federation'}</p>
@@ -70,7 +68,7 @@ function FederationBanner({ data }) {
           </div>
         </div>
         <div className="flex justify-center px-6 pb-7 md:pb-0 md:pr-9">
-          <div className="float-slow w-full max-w-md overflow-hidden rounded-[24px] border border-white/15 bg-white/90 p-1.5 shadow-[0_30px_60px_-30px_rgb(3_10_24/0.9)]">
+          <div className="w-full max-w-md overflow-hidden rounded-[24px] border border-white/15 bg-white/90 p-1.5 shadow-[0_30px_60px_-30px_rgb(3_10_24/0.9)]">
             <img src={WORLD_IMAGE.src} alt="" className="block h-auto w-full rounded-[18px]" />
           </div>
         </div>

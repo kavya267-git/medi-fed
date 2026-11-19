@@ -3,7 +3,6 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { NETWORK_IMAGE } from '../assets/illustrations'
 import { Logo } from '../components/layout/Logo'
-import { FloatingLayer } from '../components/three/FloatingLayer'
 import { motion } from 'motion/react'
 import { Button } from '../components/ui/Button'
 import { Field, inputClass } from '../components/ui/Misc'
@@ -143,7 +142,6 @@ export default function Login() {
       {/* What the platform is, for someone seeing it for the first time. */}
       {/* Stays one screen tall while the form column scrolls, so the privacy note is always in view. */}
       <section className="relative sticky top-0 hidden h-screen flex-col overflow-hidden lg:flex">
-        <FloatingLayer variant="hero" className="absolute inset-0" />
         <div className="relative z-10 px-12 pt-10">
           <Logo />
           <motion.div
@@ -164,7 +162,7 @@ export default function Login() {
         </div>
         <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-12">
           <motion.figure
-            className="float-slow w-full max-w-xl"
+            className="w-full max-w-xl"
             initial={{ opacity: 0, scale: 0.94 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}

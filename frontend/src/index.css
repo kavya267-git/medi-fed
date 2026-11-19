@@ -141,20 +141,6 @@
   backdrop-filter: blur(14px);
 }
 
-/* Illustrations float gently in their frames. */
-@keyframes float-y {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
-}
-.float-slow {
-  animation: float-y 7s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .float-slow {
-    animation: none;
-  }
-}
 
 /* The round progress pulse on the Federated Learning page (the one animated element). */
 @keyframes lane-flow {
