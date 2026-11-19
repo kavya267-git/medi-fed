@@ -48,8 +48,9 @@ function DemoAccountList({ accounts, onUse }) {
 /** What each particle form stands for, shown under the animation as it changes. */
 const STAGES = [
   'Each hospital trains on its own records',
-  'Their updates are averaged into one global model',
-  'The shared model grows with every round',
+  'Their updates are averaged at the coordinator',
+  'One global AI model learns from all of them',
+  'It grows stronger with every round',
   'The new model goes back to every hospital',
 ]
 
@@ -161,8 +162,8 @@ export default function Login() {
             transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
             <h1 className="font-display text-[2.35rem] font-bold uppercase leading-[1.08] tracking-[-0.01em] text-white">
-              Shared AI for hospitals.
-              <span className="text-sand-gradient block">Records stay home.</span>
+              Hospitals train shared models together.
+              <span className="text-sand-gradient block">Patient records stay where they are.</span>
             </h1>
             <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted">
               Each hospital trains on its own EHR, ECG, X-ray and diabetes data. Only model updates travel to the coordinator, which

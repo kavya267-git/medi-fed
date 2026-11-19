@@ -3,16 +3,17 @@ import { useMemo, useRef } from 'react'
 import * as THREE from 'three'
 
 /*
-  A cloud of glowing particles that reshapes itself, telling the project's story in four forms:
+  A cloud of glowing particles that reshapes itself, telling the project's story in five forms:
     1. four hospital clusters, with streams flowing to the middle (local training, updates sent),
-    2. a sphere (the averaged global model),
-    3. a tree growing upward (the shared model learning round after round),
-    4. a cube (the model packaged and sent back to every hospital).
+    2. a sphere (the coordinator averaging the updates),
+    3. a brain (the global AI model),
+    4. a tree growing upward (the shared model learning round after round),
+    5. a cube (the model packaged and sent back to every hospital).
   Every particle has a position in each form; the vertex shader blends between neighbouring forms on the GPU.
   Ripple rings pulse on the ground below. Decoration only: hidden from assistive technology.
 */
 
-const SHAPES = 4
+const SHAPES = 5
 const HOLD = 3.6 // seconds a form is held
 const MOVE = 2.0 // seconds a change takes
 
@@ -57,15 +58,52 @@ function buildForms(count) {
     const s = Math.sqrt(1 - u * u)
     forms[1].set([Math.cos(phi) * s * rad, 1.2 + u * rad, Math.sin(phi) * s * rad], k)
 
-    // 3. Tree: a trunk rising from the ground that opens into a wide canopy.
+    // 3. Brain: two folded hemispheres with a gap between them, a cerebellum behind and a short stem.
+    const part = r()
+    let bx
+    let by
+    let bz
+    if (part < 0.84) {
+      const side = r() < 0.5 ? -1 : 1
+      const bu = r() * 2 - 1
+      const bphi = r() * Math.PI * 2
+      const bs = Math.sqrt(1 - bu * bu)
+      let ex = Math.cos(bphi) * bs
+      let ey = bu
+      let ez = Math.sin(bphi) * bs
+      if (ex * side < 0) ex *= 0.35 // flatten the inner (medial) face of each hemisphere
+      // Folds (gyri): a ripple on the surface, deeper on top and at the sides.
+      const fold = 1 + 0.11 * Math.sin(ex * 11 + ez * 7) * Math.sin(ey * 13 + ez * 5) + 0.035 * Math.sin(ez * 23 + ey * 9)
+      const inner = r() < 0.86 ? 1 : 0.55 + r() * 0.4
+      bx = side * 0.1 + ex * 0.78 * fold * inner
+      by = ey * 0.9 * fold * inner
+      bz = ez * 1.25 * fold * inner
+      if (by < -0.45) by = -0.45 + (by + 0.45) * 0.4 // flatter underside
+    } else if (part < 0.95) {
+      const cu = r() * 2 - 1
+      const cphi = r() * Math.PI * 2
+      const cs = Math.sqrt(1 - cu * cu)
+      const ripple = 1 + 0.05 * Math.sin(cu * 30)
+      bx = Math.cos(cphi) * cs * 0.72 * ripple
+      by = -0.55 + cu * 0.32 * ripple
+      bz = -0.95 + Math.sin(cphi) * cs * 0.38 * ripple
+    } else {
+      const sy = r()
+      bx = gauss() * 0.09
+      by = -0.45 - sy * 0.85
+      bz = -0.35 - sy * 0.25 + gauss() * 0.09
+    }
+    forms[2].set([bx * 1.55, 1.3 + by * 1.55, bz * 1.55], k)
+
+    // 4. Tree: a trunk rising from the ground that opens into a wide canopy.
     const h = Math.pow(r(), 0.8)
     const y = -0.9 + h * 3.6
     const spread = h < 0.35 ? 0.12 + h * 0.3 : 0.2 + Math.pow((h - 0.35) / 0.65, 1.6) * 2.4
     const a = r() * Math.PI * 2
     const rr = spread * Math.sqrt(r())
-    forms[2].set([Math.cos(a) * rr + gauss() * 0.05, y + gauss() * 0.06, Math.sin(a) * rr + gauss() * 0.05], k)
+    forms[3].set([Math.cos(a) * rr + gauss() * 0.05, y + gauss() * 0.06, Math.sin(a) * rr + gauss() * 0.05], k)
 
-    // 4. Cube: particles on the faces, denser along the edges.
+    // 5. Cube: particles on the faces, denser along the edges.
     const size = 1.45
     const pick = () => (r() * 2 - 1) * size
     const face = Math.floor(r() * 6)
@@ -74,7 +112,7 @@ function buildForms(count) {
     const axis = face % 3
     p[axis] = face < 3 ? size : -size
     if (edge) p[(axis + 1) % 3] = r() < 0.5 ? size : -size
-    forms[3].set([p[0], p[1] + 1.2, p[2]], k)
+    forms[4].set([p[0], p[1] + 1.2, p[2]], k)
   }
   return { forms, seeds }
 }
@@ -84,6 +122,7 @@ const vertexShader = /* glsl */ `
   attribute vec3 formB;
   attribute vec3 formC;
   attribute vec3 formD;
+  attribute vec3 formE;
   attribute float seed;
   uniform float uTime;
   uniform float uMorph;
@@ -95,7 +134,8 @@ const vertexShader = /* glsl */ `
     if (i < 0.5) return formA;
     if (i < 1.5) return formB;
     if (i < 2.5) return formC;
-    return formD;
+    if (i < 3.5) return formD;
+    return formE;
   }
 
   void main() {
@@ -103,7 +143,7 @@ const vertexShader = /* glsl */ `
     float t = uMorph - from;
     // Each particle leaves a little earlier or later than its neighbours, so changes ripple through the cloud.
     float local = smoothstep(0.0, 1.0, clamp((t - seed * 0.35) / 0.65, 0.0, 1.0));
-    vec3 p = mix(formAt(mod(from, 4.0)), formAt(mod(from + 1.0, 4.0)), local);
+    vec3 p = mix(formAt(mod(from, 5.0)), formAt(mod(from + 1.0, 5.0)), local);
     // Gentle drift, so the cloud breathes even while a form is held.
     p += 0.035 * vec3(sin(uTime * 0.9 + seed * 40.0), cos(uTime * 0.7 + seed * 23.0), sin(uTime * 0.8 + seed * 61.0));
     // Mid-transition the particles lift and scatter slightly, like the reference effect.
@@ -145,6 +185,7 @@ function Particles({ count, reducedMotion, onStage }) {
     g.setAttribute('formB', new THREE.BufferAttribute(forms[1], 3))
     g.setAttribute('formC', new THREE.BufferAttribute(forms[2], 3))
     g.setAttribute('formD', new THREE.BufferAttribute(forms[3], 3))
+    g.setAttribute('formE', new THREE.BufferAttribute(forms[4], 3))
     g.setAttribute('seed', new THREE.BufferAttribute(seeds, 1))
     return g
   }, [forms, seeds])
@@ -159,7 +200,7 @@ function Particles({ count, reducedMotion, onStage }) {
     const time = state.clock.elapsedTime
     u.uTime.value = time
     if (!reducedMotion) {
-      // Hold each form, then move to the next: morph runs 0 -> 4 and wraps.
+      // Hold each form, then move to the next: morph runs 0 -> 5 and wraps.
       const cycle = HOLD + MOVE
       const step = Math.floor(time / cycle)
       const within = time - step * cycle
