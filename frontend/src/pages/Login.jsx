@@ -3,7 +3,8 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { NETWORK_IMAGE } from '../assets/illustrations'
 import { Logo } from '../components/layout/Logo'
-import { motion } from 'motion/react'
+import { AnimatePresence, motion } from 'motion/react'
+import { ParticleLayer } from '../components/particles/ParticleLayer'
 import { Button } from '../components/ui/Button'
 import { Field, inputClass } from '../components/ui/Misc'
 import { LoadingState } from '../components/ui/StateViews'
@@ -44,6 +45,14 @@ function DemoAccountList({ accounts, onUse }) {
   )
 }
 
+/** What each particle form stands for, shown under the animation as it changes. */
+const STAGES = [
+  'Each hospital trains on its own records',
+  'Their updates are averaged into one global model',
+  'The shared model grows with every round',
+  'The new model goes back to every hospital',
+]
+
 const COPY = {
   signin: { title: 'Sign in', submit: 'Sign in' },
   signup: { title: 'Create your account', submit: 'Create account' },
@@ -55,6 +64,7 @@ export default function Login() {
   const { config } = useSystem()
   const location = useLocation()
   const [mode, setMode] = useState('signin') // 'signin' | 'signup' | 'reset'
+  const [stage, setStage] = useState(0)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -160,17 +170,31 @@ export default function Login() {
             </p>
           </motion.div>
         </div>
-        <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-12">
-          <motion.figure
-            className="w-full max-w-xl"
-            initial={{ opacity: 0, scale: 0.94 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
-          >
-            <div className="overflow-hidden rounded-[28px] border border-white/15 bg-white/90 p-2 shadow-[0_40px_80px_-30px_rgb(3_10_24/0.9)]">
-              <img src={NETWORK_IMAGE.src} alt={NETWORK_IMAGE.alt} className="block h-auto w-full rounded-[22px]" />
-            </div>
-          </motion.figure>
+        <div className="relative min-h-0 flex-1">
+          <ParticleLayer
+            className="absolute inset-0"
+            onStage={setStage}
+            fallback={
+              <div className="flex h-full items-center justify-center px-12">
+                <img src={NETWORK_IMAGE.src} alt={NETWORK_IMAGE.alt} className="w-full max-w-xl rounded-[24px] border border-white/15" />
+              </div>
+            }
+          />
+          <div className="pointer-events-none absolute inset-x-12 bottom-2 flex items-center gap-3">
+            <span className="font-display text-xs font-semibold text-sand">0{stage + 1}</span>
+            <AnimatePresence mode="wait">
+              <motion.p
+                key={stage}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -6 }}
+                transition={{ duration: 0.4 }}
+                className="text-sm text-muted"
+              >
+                {STAGES[stage]}
+              </motion.p>
+            </AnimatePresence>
+          </div>
         </div>
         <div className="relative z-10 px-12 pb-10 pt-6">
           <p className="max-w-lg text-xs leading-relaxed text-faint">
