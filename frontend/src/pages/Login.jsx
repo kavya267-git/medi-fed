@@ -3,7 +3,7 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { NETWORK_IMAGE } from '../assets/illustrations'
 import { Logo } from '../components/layout/Logo'
-import { FederationHero } from '../components/three/FederationHero'
+import { FloatingLayer } from '../components/three/FloatingLayer'
 import { motion } from 'motion/react'
 import { Button } from '../components/ui/Button'
 import { Field, inputClass } from '../components/ui/Misc'
@@ -142,61 +142,54 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* What the platform is, for someone seeing it for the first time. */}
       {/* Stays one screen tall while the form column scrolls, so the privacy note is always in view. */}
-      <section className="hero-sky sticky top-0 hidden h-screen flex-col overflow-hidden lg:flex">
+      <section className="relative sticky top-0 hidden h-screen flex-col overflow-hidden lg:flex">
+        <FloatingLayer variant="hero" className="absolute inset-0" />
         <div className="relative z-10 px-12 pt-10">
           <Logo />
           <motion.div
-            className="mt-10 max-w-xl"
-            initial={{ opacity: 0, y: 16 }}
+            className="mt-12 max-w-xl"
+            initial={{ opacity: 0, y: 18 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+            transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           >
-            <h1 className="font-display text-[2.3rem] font-semibold leading-[1.12] tracking-[-0.02em] text-brand-950">
-              Hospitals train shared models together. Patient records stay where they are.
+            <h1 className="font-display text-[2.35rem] font-bold uppercase leading-[1.08] tracking-[-0.01em] text-white">
+              Shared AI for hospitals.
+              <span className="block text-brand-500">Records stay home.</span>
             </h1>
-            <p className="mt-5 max-w-lg text-base leading-relaxed text-muted">
+            <p className="mt-5 max-w-md text-[15px] leading-relaxed text-muted">
               Each hospital trains on its own EHR, ECG, X-ray and diabetes data. Only model updates travel to the coordinator, which
               averages them into a shared model and sends it back.
             </p>
           </motion.div>
         </div>
-        <motion.div
-          className="relative min-h-0 flex-1"
-          initial={{ opacity: 0, scale: 0.96 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 1.1, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
-        >
-          <FederationHero
-            className="absolute inset-0"
-            fallback={<img src={NETWORK_IMAGE.src} alt={NETWORK_IMAGE.alt} className="fade-edges h-full w-full object-contain px-6" />}
-          />
-          <div className="pointer-events-none absolute bottom-3 left-12 flex gap-5 text-xs text-muted">
-            <span className="inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-brand-600" aria-hidden="true" />
-              Model updates to the coordinator
-            </span>
-            <span className="inline-flex items-center gap-2">
-              <span className="h-2 w-2 rounded-full bg-violet" aria-hidden="true" />
-              Global model back to hospitals
-            </span>
-          </div>
-        </motion.div>
-        <div className="relative z-10 px-12 pb-10 pt-4">
-          <p className="max-w-lg text-xs leading-relaxed text-muted">
+        <div className="relative z-10 flex min-h-0 flex-1 items-center justify-center px-12">
+          <motion.figure
+            className="float-slow w-full max-w-xl"
+            initial={{ opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 1, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <div className="overflow-hidden rounded-[28px] border border-white/15 bg-white/90 p-2 shadow-[0_40px_80px_-30px_rgb(3_10_24/0.9)]">
+              <img src={NETWORK_IMAGE.src} alt={NETWORK_IMAGE.alt} className="block h-auto w-full rounded-[22px]" />
+            </div>
+          </motion.figure>
+        </div>
+        <div className="relative z-10 px-12 pb-10 pt-6">
+          <p className="max-w-lg text-xs leading-relaxed text-faint">
             Federated learning reduces the need to centralise raw patient data. It does not, on its own, guarantee privacy. This is a
             research prototype and not a medical device.
           </p>
         </div>
       </section>
 
-      <section className="flex items-center justify-center bg-surface px-5 py-10">
-        <div className="w-full max-w-sm">
+      <section className="flex items-center justify-center px-5 py-10">
+        <div className="glass w-full max-w-md rounded-[28px] px-7 py-8 shadow-[0_40px_80px_-40px_rgb(3_10_24/0.9)]">
           <div className="mb-6 lg:hidden">
             <Logo />
             <img
               src={NETWORK_IMAGE.src}
               alt={NETWORK_IMAGE.alt}
-              className="fade-edges mt-5 h-36 w-full object-cover object-center"
+              className="mt-5 h-36 w-full rounded-2xl object-cover object-center"
             />
             <p className="mt-3 text-xs leading-relaxed text-muted">
               Patient records stay at each hospital; only model updates are shared. A research prototype, not a medical device.
@@ -217,7 +210,7 @@ export default function Login() {
             </div>
           ) : (
             <>
-              <h2 className="text-xl font-semibold text-ink">{COPY[mode].title}</h2>
+              <h2 className="font-display text-2xl font-semibold uppercase tracking-tight text-ink">{COPY[mode].title}</h2>
               <p className="mt-1.5 text-sm leading-relaxed text-muted">
                 {mode === 'signin'
                   ? isDemo

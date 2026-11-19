@@ -19,7 +19,7 @@ export function SignalChart({ signal, importance, sampleRateHz }) {
           tick={AXIS_TICK}
           tickLine={false}
           axisLine={{ stroke: GRID_STROKE }}
-          label={{ value: 'Time (ms)', position: 'insideBottom', offset: -10, fill: '#4e5b75', fontSize: 12 }}
+          label={{ value: 'Time (ms)', position: 'insideBottom', offset: -10, fill: '#c0cee2', fontSize: 12 }}
         />
         <YAxis yAxisId="signal" tick={AXIS_TICK} tickLine={false} axisLine={false} width={44} tickFormatter={(v) => v.toFixed(1)} />
         <YAxis yAxisId="importance" orientation="right" hide domain={[0, (max) => Math.max(max * 3, 0.01)]} />
@@ -34,7 +34,7 @@ export function SignalChart({ signal, importance, sampleRateHz }) {
           dataKey="importance"
           name="Importance (drop in confidence when hidden)"
           stroke="none"
-          fill="#b03a60"
+          fill="#ff9bb9"
           fillOpacity={0.35}
           isAnimationActive={false}
         />
@@ -42,7 +42,7 @@ export function SignalChart({ signal, importance, sampleRateHz }) {
           yAxisId="signal"
           dataKey="signal"
           name="ECG signal"
-          stroke="#111a2e"
+          stroke="#ffffff"
           strokeWidth={1.75}
           dot={false}
           isAnimationActive={false}

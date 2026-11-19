@@ -106,7 +106,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
                 <label key={hospital.id} className={`flex items-center gap-2.5 text-sm ${available ? 'text-ink' : 'text-faint'}`}>
                   <input
                     type="checkbox"
-                    className="h-4 w-4 accent-[#24489a]"
+                    className="h-4 w-4 accent-[#9db8d8]"
                     disabled={!available}
                     checked={available && selected.includes(hospital.id)}
                     onChange={() => toggle(hospital.id)}
@@ -212,7 +212,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
           <label className="flex items-start gap-2.5 text-sm text-ink">
             <input
               type="checkbox"
-              className="mt-0.5 h-4 w-4 accent-[#24489a]"
+              className="mt-0.5 h-4 w-4 accent-[#9db8d8]"
               checked={dpEnabled}
               onChange={(e) => setDpEnabled(e.target.checked)}
             />
@@ -254,7 +254,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
               <label className="col-span-2 flex items-start gap-2.5 text-sm text-ink">
                 <input
                   type="checkbox"
-                  className="mt-0.5 h-4 w-4 accent-[#24489a]"
+                  className="mt-0.5 h-4 w-4 accent-[#9db8d8]"
                   checked={adaptiveClip}
                   onChange={(e) => setAdaptiveClip(e.target.checked)}
                 />

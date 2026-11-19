@@ -1,6 +1,6 @@
 /** Colour scale for the choropleth: light to dark blue over the observed range. */
-export const INTENSITY_COLORS = ['#e6eefa', '#c3d6f3', '#93b4e6', '#5d8ad3', '#2f5fb3', '#173a7e']
-export const NO_VALUE_COLOR = '#e3e6e5'
+export const INTENSITY_COLORS = ['#203759', '#2b4a74', '#3d6293', '#5b82b3', '#86a8d2', '#c3d5ea']
+export const NO_VALUE_COLOR = '#26354d'
 
 export function buildScale(values) {
   const present = values.filter((v) => v !== null && v !== undefined && !Number.isNaN(v))

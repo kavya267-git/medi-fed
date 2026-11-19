@@ -113,6 +113,7 @@ class RegistrationService:
                     f"{MAX_RECORDS_PER_MODALITY:,}."
                 )
             counts[modality] = value
+        latitude, longitude = self._site(payload, region_id)
         if payload.get("confirm_no_patient_data") is not True:
             raise ValidationFailed(f"Tick the box: “{CONFIRMATION_TEXT}”")
         password = payload.get("password") or ""
@@ -133,6 +134,8 @@ class RegistrationService:
                 "id": registration_id,
                 "hospital_name": hospital_name,
                 "region_id": region_id,
+                "latitude": latitude,
+                "longitude": longitude,
                 "contact_name": contact_name,
                 "contact_email": email,
                 "modalities": modalities,
@@ -185,13 +188,33 @@ class RegistrationService:
             n += 1
         return candidate
 
+    def _site(self, payload: Dict[str, Any], region_id: str):
+        """Optional map location: both coordinates or neither, and near the chosen district (within ~150 km)."""
+        lat, lon = payload.get("latitude"), payload.get("longitude")
+        if lat is None and lon is None:
+            return None, None
+        try:
+            lat, lon = float(lat), float(lon)
+        except (TypeError, ValueError):
+            raise ValidationFailed("Give both latitude and longitude for the hospital's location, or leave both empty.")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180):
+            raise ValidationFailed("The location is not a valid latitude and longitude.")
+        region = self.db.fetch_one("SELECT centroid_lat, centroid_lon FROM regions WHERE region_id = :r", {"r": region_id})
+        if region and region.get("centroid_lat") is not None:
+            if abs(lat - region["centroid_lat"]) > 1.4 or abs(lon - region["centroid_lon"]) > 1.4:
+                raise ValidationFailed("The location is far from the chosen district. Check the pin or the district.")
+        return round(lat, 6), round(lon, 6)
+
     def approve(self, registration_id: str, actor: Dict[str, Any]) -> Dict[str, Any]:
         with self.db.transaction():
             row = self._get(registration_id)
             if row["status"] != "PENDING":
                 raise ConflictError(f"This request is {row['status'].lower()}; only pending requests can be approved.")
             hospital_id = self._unique_hospital_id(row["hospital_name"])
-            self.hospitals.create_registered(hospital_id, row["hospital_name"], row["region_id"], row["modalities"])
+            self.hospitals.create_registered(
+                hospital_id, row["hospital_name"], row["region_id"], row["modalities"],
+                latitude=row.get("latitude"), longitude=row.get("longitude"),
+            )
             self.auth.enable_operator(row["user_id"], hospital_id)
             now = utc_now_iso()
             self.db.update(

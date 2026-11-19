@@ -1,8 +1,8 @@
 import { Area, CartesianGrid, ComposedChart, Legend, Line, ReferenceLine, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import { AXIS_TICK, GRID_STROKE, TOOLTIP_STYLE } from './theme'
 
-const OBSERVED = '#24489a'
-const FORECAST = '#6a4c9c'
+const OBSERVED = '#9db8d8'
+const FORECAST = '#c4adff'
 
 /**
  * Observed weekly cases followed by the forecast.
@@ -64,16 +64,16 @@ export function ForecastChart({ history, forecast, visibleWeeks = 52 }) {
         {boundary ? (
           <ReferenceLine
             x={boundary}
-            stroke="#636f88"
+            stroke="#93a8c6"
             strokeDasharray="3 3"
-            label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#4e5b75', fontSize: 12 }}
+            label={{ value: 'Forecast starts', position: 'insideTopRight', fill: '#c0cee2', fontSize: 12 }}
           />
         ) : null}
         <Line dataKey="observed" name="Observed cases" stroke={OBSERVED} strokeWidth={2} dot={false} isAnimationActive={false} />
         <Line
           dataKey="holdout"
           name="One-week-ahead prediction on held-out weeks"
-          stroke="#636f88"
+          stroke="#93a8c6"
           strokeWidth={1.5}
           strokeDasharray="4 3"
           dot={false}

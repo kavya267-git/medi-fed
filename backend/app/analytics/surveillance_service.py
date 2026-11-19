@@ -286,7 +286,37 @@ class SurveillanceService:
         # The wording is attached when serving, so results cached under older wording never show it.
         payload = {**self._hotspots_all(disease, period, actor, audit=True), "disclaimer": HOTSPOT_DISCLAIMER}
         payload = self._with_clusters(payload)
+        payload = {**payload, "hospitals": self._hospital_pins(payload)}
         return payload if jurisdiction is None else scope_hotspots(payload, jurisdiction)
+
+    def _hospital_pins(self, payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """Where each hospital is, for the map: its own site when it gave one at registration, otherwise the
+        centre of its district (marked as approximate). Only for real boundaries; simulated regions are not places.
+        Names and sites of hospitals are public; nothing about patients is included."""
+        if payload.get("data_status", {}).get("geometry_simulated") or not payload["geojson"]["features"]:
+            return []
+        regions = {r["region_id"]: r for r in self.regions() if not r.get("is_simulated")}
+        if not regions:
+            return []
+        homes = dict(self.settings.demo_hospital_regions or {}) if self.settings.demo_mode else {}
+        pins = []
+        for row in self.db.fetch_all("SELECT id, name, online, region_id, latitude, longitude FROM hospitals ORDER BY id"):
+            region_id = row.get("region_id") or homes.get(row["id"])
+            region = regions.get(region_id)
+            if region is None:
+                continue
+            exact = row.get("latitude") is not None and row.get("longitude") is not None
+            pins.append({
+                "id": row["id"],
+                "name": row["name"],
+                "online": bool(row["online"]),
+                "region_id": region_id,
+                "region_name": region["name"],
+                "latitude": float(row["latitude"]) if exact else region["centroid_lat"],
+                "longitude": float(row["longitude"]) if exact else region["centroid_lon"],
+                "location": "exact" if exact else "district_centre",
+            })
+        return pins
 
     def _with_clusters(self, payload: Dict[str, Any]) -> Dict[str, Any]:
         """Add the K-Means layer: clusters of potential hotspots (analytics/hotspot/clusters.py).
@@ -516,6 +546,7 @@ def scope_hotspots(payload: Dict[str, Any], jurisdiction: List[str]) -> Dict[str
         "geojson": {**payload["geojson"], "features": features},
         "summary": summary,
         "jurisdiction": sorted(allowed),
+        "hospitals": [h for h in payload.get("hospitals", []) if h["region_id"] in allowed],
     }
     if payload.get("hotspot_clusters"):
         # Clusters are found on every flagged region (like detection); an officer sees the members in their

@@ -127,7 +127,7 @@ function EhrGlobal({ explanation }) {
   const rows = explanation.features.map((feature) => ({
     name: feature.label,
     value: feature.mean_abs_shap,
-    color: feature.direction > 0.15 ? RAISES : feature.direction < -0.15 ? LOWERS : '#84918d',
+    color: feature.direction > 0.15 ? RAISES : feature.direction < -0.15 ? LOWERS : '#8b98ad',
   }))
   return (
     <div className="space-y-5">
@@ -186,7 +186,7 @@ function XrayIndividual({ explanation }) {
         <div>
           <HeatmapCanvas imageBase64={explanation.image_png_base64} heatmap={explanation.heatmap} showOverlay={overlay} />
           <label className="mt-2 flex items-center gap-2 text-sm text-ink">
-            <input type="checkbox" className="h-4 w-4 accent-[#24489a]" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} />
+            <input type="checkbox" className="h-4 w-4 accent-[#9db8d8]" checked={overlay} onChange={(e) => setOverlay(e.target.checked)} />
             Show heat map
           </label>
         </div>

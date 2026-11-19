@@ -24,9 +24,12 @@ class RegistrationRequest(BaseModel):
     contact_email: str = Field(max_length=300)
     password: str = Field(max_length=256)
     password_confirm: str = Field(max_length=256)
-    modalities: List[str] = Field(max_length=3)
+    modalities: List[str] = Field(max_length=8)
     approx_record_counts: Dict[str, int] = Field(default_factory=dict)
     confirm_no_patient_data: bool = False
+    #: Optional: the hospital's own site, so the map can show it there (a public building, not patient data).
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
 
 
 class ReasonRequest(BaseModel):

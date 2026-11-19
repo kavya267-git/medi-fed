@@ -2,13 +2,13 @@ import { LoaderCircle } from 'lucide-react'
 import { classNames } from '../../utils/format'
 
 const VARIANTS = {
-  primary: 'bg-brand-700 text-white hover:bg-brand-800 disabled:bg-brand-700/50',
-  secondary: 'border border-line-strong bg-surface text-ink hover:bg-canvas disabled:text-faint',
-  danger: 'border border-alert/30 bg-surface text-alert hover:bg-alert-soft disabled:text-faint',
-  ghost: 'text-brand-700 hover:bg-brand-50 disabled:text-faint',
+  primary: 'bg-cta text-cta-ink hover:bg-brand-900 disabled:bg-white/40',
+  secondary: 'border border-white/20 bg-white/5 text-ink hover:bg-white/10 disabled:text-faint',
+  danger: 'border border-alert/40 bg-transparent text-alert hover:bg-alert-soft disabled:text-faint',
+  ghost: 'text-brand-700 hover:bg-white/10 disabled:text-faint',
 }
 
-const SIZES = { md: 'h-10 px-4 text-sm', sm: 'h-8 px-3 text-[13px]' }
+const SIZES = { md: 'h-10 px-5 text-sm', sm: 'h-8 px-3.5 text-[13px]' }
 
 export function Button({
   children,
@@ -27,7 +27,7 @@ export function Button({
       disabled={disabled || loading}
       aria-busy={loading || undefined}
       className={classNames(
-        'inline-flex items-center justify-center gap-2 rounded-lg font-medium transition-[color,background-color,transform] active:scale-[0.98] disabled:active:scale-100',
+        'inline-flex items-center justify-center gap-2 rounded-full font-semibold transition-[color,background-color,transform] active:scale-[0.98] disabled:active:scale-100',
         VARIANTS[variant],
         SIZES[size],
         className,

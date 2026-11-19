@@ -144,3 +144,40 @@ def test_demo_officers_and_hospitals_use_the_configured_districts(karnataka_demo
 def test_without_the_settings_the_officers_keep_the_simulated_regions(karnataka_client):
     accounts = {a["email"]: a for a in karnataka_client.get("/api/system/config").json()["demo_accounts"]}
     assert accounts["officer_north@fl-healthcare.demo"]["jurisdiction"] == ["R01", "R02", "R03", "R04", "R05", "R06"]
+
+
+def _registration(**overrides):
+    body = {
+        "hospital_name": "Belagavi Test Hospital",
+        "region_id": "KA-BELGAUM",
+        "contact_name": "Asha",
+        "contact_email": "asha@example.org",
+        "password": "long-enough-pw",
+        "password_confirm": "long-enough-pw",
+        "modalities": ["ehr", "ecg", "xray", "diabetes"],
+        "approx_record_counts": {"ehr": 100, "ecg": 100, "xray": 100, "diabetes": 100},
+        "confirm_no_patient_data": True,
+    }
+    return {**body, **overrides}
+
+
+def test_map_shows_hospital_sites_exact_or_district_centre(karnataka_client):
+    admin = login(karnataka_client, "admin@fl-healthcare.demo")
+    # A site far from the chosen district is refused; one inside it is kept.
+    far = karnataka_client.post("/api/registrations", json=_registration(latitude=12.97, longitude=77.59))
+    assert far.status_code == 422
+    receipt = karnataka_client.post("/api/registrations", json=_registration(latitude=15.8728, longitude=74.5126))
+    assert receipt.status_code == 201
+    assert karnataka_client.post(f"/api/registrations/{receipt.json()['id']}/approve", headers=admin).status_code == 200
+
+    hotspots = karnataka_client.get("/api/analytics/hotspots", params={"disease": "dengue"}, headers=admin).json()
+    pins = {pin["name"]: pin for pin in hotspots["hospitals"]}
+    site = pins["Belagavi Test Hospital"]
+    assert site["location"] == "exact" and (site["latitude"], site["longitude"]) == (15.8728, 74.5126)
+    assert site["region_id"] == "KA-BELGAUM" and set(site) == {
+        "id", "name", "online", "region_id", "region_name", "latitude", "longitude", "location"}
+
+
+def test_simulated_regions_have_no_hospital_pins(client):
+    viewer = login(client, "viewer@fl-healthcare.demo")
+    assert client.get("/api/analytics/hotspots", params={"disease": "dengue"}, headers=viewer).json()["hospitals"] == []

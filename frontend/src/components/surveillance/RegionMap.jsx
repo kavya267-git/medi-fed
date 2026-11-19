@@ -1,11 +1,23 @@
 import { useEffect, useMemo, useRef } from 'react'
-import { GeoJSON, MapContainer, TileLayer } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, TileLayer, Tooltip } from 'react-leaflet'
 import { HOTSPOT_STATUS } from '../../utils/constants'
 import { geojsonBounds } from './scale'
 
-/** Base-map tiles are opt-in: without VITE_MAP_TILE_URL the regions are drawn on a plain ground. */
-const TILE_URL = import.meta.env.VITE_MAP_TILE_URL || ''
-const TILE_ATTRIBUTION = import.meta.env.VITE_MAP_TILE_ATTRIBUTION || ''
+/**
+ * Base maps for real boundaries. Satellite imagery (Esri World Imagery) with place names on top, or the
+ * plain ground. VITE_MAP_TILE_URL replaces the satellite tiles with another provider.
+ */
+export const BASEMAPS = {
+  satellite: {
+    url: import.meta.env.VITE_MAP_TILE_URL || 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+    attribution:
+      import.meta.env.VITE_MAP_TILE_ATTRIBUTION ||
+      'Imagery &copy; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+    labels: import.meta.env.VITE_MAP_TILE_URL
+      ? null
+      : 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}',
+  },
+}
 
 /**
  * Choropleth of regions. Fill shows disease intensity; the outline shows the hotspot status.
@@ -16,11 +28,24 @@ const TILE_ATTRIBUTION = import.meta.env.VITE_MAP_TILE_ATTRIBUTION || ''
  * place, so they always sit on a plain ground.
  */
 /** Colour of the "cluster of potential hotspots" layer: a halo around the regions, distinct from the status outlines. */
-export const CLUSTER_COLOR = '#6b3fa0'
+export const CLUSTER_COLOR = '#c4adff'
 
-export function RegionMap({ geojson, dataKey, scale, valueKey, selectedId, onSelect, showTiles, watermark, showClusters = false }) {
+export function RegionMap({
+  geojson,
+  dataKey,
+  scale,
+  valueKey,
+  selectedId,
+  onSelect,
+  showTiles,
+  watermark,
+  showClusters = false,
+  hospitals = [],
+  basemap = 'satellite',
+}) {
   const bounds = useMemo(() => geojsonBounds(geojson), [geojson])
-  const tiles = Boolean(showTiles && TILE_URL)
+  const tiles = Boolean(showTiles && basemap === 'satellite')
+  const layer = BASEMAPS.satellite
   const selectRef = useRef(onSelect)
   useEffect(() => {
     selectRef.current = onSelect
@@ -33,8 +58,8 @@ export function RegionMap({ geojson, dataKey, scale, valueKey, selectedId, onSel
       const flagged = status === 'CANDIDATE_HOTSPOT' || status === 'ELEVATED'
       return {
         fillColor: scale.color(feature.properties[valueKey]),
-        fillOpacity: tiles ? 0.72 : 1,
-        color: selected ? '#111a2e' : flagged ? HOTSPOT_STATUS[status].color : '#ffffff',
+        fillOpacity: tiles ? 0.45 : 1,
+        color: selected ? '#ffffff' : flagged ? HOTSPOT_STATUS[status].color : tiles ? 'rgba(255,255,255,0.55)' : '#12233c',
         weight: selected ? 3.5 : status === 'CANDIDATE_HOTSPOT' ? 3 : status === 'ELEVATED' ? 2.5 : 1,
         dashArray: status === 'ELEVATED' && !selected ? '6 4' : undefined,
       }
@@ -72,7 +97,7 @@ export function RegionMap({ geojson, dataKey, scale, valueKey, selectedId, onSel
         whenReady={(event) => event.target.setMinZoom(event.target.getZoom())}
         className="h-[26rem] w-full"
       >
-        {tiles ? <TileLayer url={TILE_URL} attribution={TILE_ATTRIBUTION} /> : null}
+        {tiles ? <TileLayer url={layer.url} attribution={layer.attribution} maxNativeZoom={17} /> : null}
         {/* Flagged regions are drawn last so their outlines sit on top of their neighbours'. */}
         <GeoJSON key={`${dataKey}:${showClusters}`} data={orderForDrawing(geojson)} style={style} onEachFeature={onEachFeature} />
         {/* Extra layer: a translucent halo around regions in a cluster of potential hotspots. Not clickable. */}
@@ -84,6 +109,30 @@ export function RegionMap({ geojson, dataKey, scale, valueKey, selectedId, onSel
             style={() => ({ fill: false, color: CLUSTER_COLOR, weight: 9, opacity: 0.38, lineJoin: 'round' })}
           />
         ) : null}
+        {tiles && layer.labels ? <TileLayer url={layer.labels} pane="shadowPane" opacity={0.85} /> : null}
+        {/* Hospital sites: their own location, or the district centre (dashed ring) when none was given. */}
+        {hospitals.map((hospital) => (
+          <CircleMarker
+            key={hospital.id}
+            center={[hospital.latitude, hospital.longitude]}
+            radius={hospital.location === 'exact' ? 7 : 6}
+            pathOptions={{
+              color: '#ffffff',
+              weight: 2,
+              dashArray: hospital.location === 'exact' ? undefined : '3 3',
+              fillColor: hospital.online ? '#5fd3a0' : '#8b98ad',
+              fillOpacity: 1,
+            }}
+          >
+            <Tooltip direction="top" offset={[0, -6]}>
+              <span className="font-semibold">{hospital.name}</span>
+              <br />
+              {hospital.online ? 'Online' : 'Offline'}, {hospital.region_name}
+              <br />
+              {hospital.location === 'exact' ? 'Hospital location' : 'District centre (exact site not given)'}
+            </Tooltip>
+          </CircleMarker>
+        ))}
       </MapContainer>
       {watermark ? (
         // Part of the map itself, above the regions and not dismissable; clicks pass through to the map.

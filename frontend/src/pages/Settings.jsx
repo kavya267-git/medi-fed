@@ -231,7 +231,7 @@ function JurisdictionPicker({ email, regions, value, pending, disabled, onSave }
           <label key={region.region_id} className="flex items-center gap-1.5 text-xs text-ink">
             <input
               type="checkbox"
-              className="h-3.5 w-3.5 accent-[#24489a]"
+              className="h-3.5 w-3.5 accent-[#9db8d8]"
               checked={chosen.includes(region.region_id)}
               onChange={() => toggle(region.region_id)}
             />

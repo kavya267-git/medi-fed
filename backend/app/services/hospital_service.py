@@ -342,7 +342,10 @@ class HospitalService:
         return dict(row) if row else None
 
     # ---------------------------------------------------- registered hospitals
-    def create_registered(self, hospital_id: str, name: str, region_id: str, declared: List[str]) -> None:
+    def create_registered(
+        self, hospital_id: str, name: str, region_id: str, declared: List[str],
+        latitude: Optional[float] = None, longitude: Optional[float] = None,
+    ) -> None:
         """An approved registration. Offline (and invited to nothing) until its own node connects."""
         self.db.insert(
             "hospitals",
@@ -357,6 +360,8 @@ class HospitalService:
                 "region_id": region_id,
                 "declared_modalities": list(declared),
                 "data_check": {},
+                "latitude": latitude,
+                "longitude": longitude,
                 "created_at": utc_now_iso(),
             },
         )

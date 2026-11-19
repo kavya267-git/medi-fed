@@ -108,7 +108,7 @@ export function LocalMetrics({ metrics }) {
         xLabel="Round"
         percent
         series={[
-          { key: 'local', label: 'Locally trained model (before averaging)', color: '#b0661a', dashed: true },
+          { key: 'local', label: 'Locally trained model (before averaging)', color: '#f2b84b', dashed: true },
           { key: 'global', label: 'Global model (after FedAvg)', color: MODALITIES[active].color },
         ]}
       />

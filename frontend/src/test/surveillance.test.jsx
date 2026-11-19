@@ -48,10 +48,10 @@ describe('Surveillance page', () => {
     render(<Surveillance />)
     expect(await screen.findByTestId('map')).toBeInTheDocument()
     expect(screen.getAllByTestId(/^region-/)).toHaveLength(3)
-    expect(screen.getByTestId('region-R01')).toHaveAttribute('data-outline', '#b3261e')
-    expect(screen.getByTestId('region-R02')).toHaveAttribute('data-outline', '#ffffff')
+    expect(screen.getByTestId('region-R01')).toHaveAttribute('data-outline', '#ff8080')
+    expect(screen.getByTestId('region-R02')).toHaveAttribute('data-outline', '#12233c')
     // A region without a complete count gets the neutral "no value" fill, not a low-intensity colour.
-    expect(screen.getByTestId('region-R03')).toHaveAttribute('data-fill', '#e3e6e5')
+    expect(screen.getByTestId('region-R03')).toHaveAttribute('data-fill', '#26354d')
   })
 
   it('stamps a permanent watermark on the map when real boundaries carry simulated counts', async () => {
@@ -151,9 +151,9 @@ describe('map helpers', () => {
     const scale = buildScale([10, 20, 30, null])
     expect(scale.min).toBe(10)
     expect(scale.max).toBe(30)
-    expect(scale.color(10)).toBe('#e6eefa')
-    expect(scale.color(30)).toBe('#173a7e')
-    expect(scale.color(null)).toBe('#e3e6e5')
+    expect(scale.color(10)).toBe('#203759')
+    expect(scale.color(30)).toBe('#c3d5ea')
+    expect(scale.color(null)).toBe('#26354d')
     expect(buildScale([null]).min).toBeNull()
   })
 })

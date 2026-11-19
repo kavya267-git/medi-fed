@@ -5,80 +5,90 @@
   for values that are literally machine identifiers (hashes, round ids).
 */
 @theme {
-  --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
-  --font-display: 'Sora', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
+  /* Wide, confident display face for titles and headline numbers; a clean sans for everything else. */
+  --font-sans: 'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Unbounded', 'Montserrat', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*
-    Neutrals and brand sampled from the illustrations in src/assets (light blue canvas, indigo-blue brand).
-    Contrast (WCAG AA needs 4.5:1 for text): ink 15.6, muted 6.1, faint 4.5 and brand-700 7.6 on canvas;
-    white on brand-600 6.6. The status colours below are unchanged.
+    Slate-navy "command centre" theme. Surfaces are navy layers, text is white and steel blue.
+    Contrast on surface (#1b2f4e): ink 13.6, muted 8.2, faint 5.0, brand-700 9.7 (all above AA 4.5).
   */
-  --color-canvas: #eef3fb;
-  --color-surface: #ffffff;
-  --color-ink: #111a2e;
-  --color-muted: #4e5b75;
-  --color-faint: #636f88;
-  --color-line: #d6dfee;
-  --color-line-strong: #bccae0;
+  --color-canvas: #12233c;
+  --color-surface: #1b2f4e;
+  --color-raised: #22395c;
+  --color-ink: #ffffff;
+  --color-muted: #c0cee2;
+  --color-faint: #93a8c6;
+  --color-line: #2f4669;
+  --color-line-strong: #41597f;
 
-  --color-brand-950: #0b1d45;
-  --color-brand-900: #11285e;
-  --color-brand-800: #1b3878;
-  --color-brand-700: #24489a;
-  --color-brand-600: #2d59b5;
-  --color-brand-500: #3f6fd8;
-  --color-brand-400: #6b93e6;
-  --color-brand-300: #93b3ee;
-  --color-brand-200: #b6cdf2;
-  --color-brand-100: #d9e5f9;
-  --color-brand-50: #ecf2fc;
+  /* Steel-blue scale, light at the high end so links and highlights read on navy. */
+  --color-brand-950: #ffffff;
+  --color-brand-900: #eef3fa;
+  --color-brand-800: #dce7f4;
+  --color-brand-700: #c3d5ea;
+  --color-brand-600: #9db8d8;
+  --color-brand-500: #80a0c5;
+  --color-brand-400: #6a88b0;
+  --color-brand-300: #516d8d;
+  --color-brand-200: #3a5a85;
+  --color-brand-100: #2b486f;
+  --color-brand-50: #223b60;
 
-  /* The violet of the global model in the illustrations (the coordinator's glow). */
-  --color-violet: #7c5cff;
-  --color-violet-soft: #eeeaff;
+  /* Call-to-action: white pill, navy text (as in the brand reference). */
+  --color-cta: #ffffff;
+  --color-cta-ink: #12233c;
 
-  /* One hue per data modality, used consistently across pages. */
-  --color-ehr: #4353b3;
-  --color-ehr-soft: #e8eaf8;
-  --color-ecg: #b03a60;
-  --color-ecg-soft: #f8e7ed;
-  --color-xray: #2a7b99;
-  --color-xray-soft: #e2f1f6;
-  --color-diabetes: #6a4aa8;
-  --color-diabetes-soft: #efeaf8;
+  --color-violet: #a99bff;
+  --color-violet-soft: rgb(169 155 255 / 0.16);
+
+  /* One hue per data modality, brightened for the dark background. */
+  --color-ehr: #a3b0ff;
+  --color-ehr-soft: rgb(163 176 255 / 0.16);
+  --color-ecg: #ff9bb9;
+  --color-ecg-soft: rgb(255 155 185 / 0.16);
+  --color-xray: #7fd6f0;
+  --color-xray-soft: rgb(127 214 240 / 0.16);
+  --color-diabetes: #c9b2ff;
+  --color-diabetes-soft: rgb(201 178 255 / 0.16);
 
   /* Surveillance status scale. */
-  --color-ok: #2a7a57;
-  --color-ok-soft: #e3f3eb;
-  --color-warn: #a4680e;
-  --color-warn-soft: #fbf0d9;
-  /* Darker amber for text only (5.4:1 on warn-soft, AA); the status colour itself is unchanged. */
-  --color-warn-ink: #8a560b;
-  --color-alert: #b3261e;
-  --color-alert-soft: #fbe6e4;
-  --color-nodata: #84918d;
-  --color-nodata-soft: #eceff0;
+  --color-ok: #5fd3a0;
+  --color-ok-soft: rgb(95 211 160 / 0.15);
+  --color-warn: #f2b84b;
+  --color-warn-soft: rgb(242 184 75 / 0.15);
+  --color-warn-ink: #f6cd80;
+  --color-alert: #ff8080;
+  --color-alert-soft: rgb(255 128 128 / 0.15);
+  --color-nodata: #8b98ad;
+  --color-nodata-soft: rgb(139 152 173 / 0.16);
 
-  --color-forecast: #6a4c9c;
-  --color-forecast-soft: #ede7f6;
+  --color-forecast: #c4adff;
+  --color-forecast-soft: rgb(196 173 255 / 0.15);
 
-  --shadow-card: 0 1px 2px rgb(17 26 46 / 0.05), 0 1px 1px rgb(17 26 46 / 0.03);
-  --shadow-raised: 0 18px 40px -18px rgb(17 40 94 / 0.32);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 18px 40px -24px rgb(3 10 24 / 0.7);
+  --shadow-raised: 0 24px 60px -24px rgb(3 10 24 / 0.8);
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
     color: var(--color-ink);
-    background: var(--color-canvas);
+    background:
+      radial-gradient(900px 600px at 85% -5%, rgb(128 160 197 / 0.22), transparent 60%),
+      radial-gradient(800px 600px at 0% 100%, rgb(81 109 141 / 0.25), transparent 60%),
+      linear-gradient(160deg, #0f1e34 0%, #172b48 55%, #213c62 100%);
+    background-attachment: fixed;
+    color-scheme: dark;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'tnum' 1; /* tabular numerals: numbers line up in tables and KPIs */
   }
 
   h1 {
     font-family: var(--font-display);
-    letter-spacing: -0.015em;
+    font-weight: 600;
+    letter-spacing: -0.01em;
   }
 
   body {
@@ -87,7 +97,7 @@
   }
 
   :focus-visible {
-    outline: 2px solid var(--color-brand-600);
+    outline: 2px solid var(--color-brand-500);
     outline-offset: 2px;
     border-radius: 4px;
   }
@@ -103,7 +113,29 @@
 
 /* The sign-in hero: the pale sky of the illustrations, with a soft glow where the coordinator sits. */
 .hero-sky {
-  background: linear-gradient(180deg, #f6f8fd 0%, #eaf0fa 100%);
+  background: transparent;
+}
+
+/* Frosted panel used for cards and the sign-in form. */
+.glass {
+  background: rgb(255 255 255 / 0.05);
+  border: 1px solid rgb(255 255 255 / 0.1);
+  backdrop-filter: blur(14px);
+}
+
+/* Illustrations float gently in their frames. */
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+.float-slow {
+  animation: float-y 7s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .float-slow {
+    animation: none;
+  }
 }
 
 /* The round progress pulse on the Federated Learning page (the one animated element). */
@@ -135,8 +167,8 @@
 /* Leaflet: match the app surface and keep popups readable. */
 .leaflet-container {
   font-family: var(--font-sans);
-  background: #e6edf8;
-  border-radius: 0.5rem;
+  background: #16294a;
+  border-radius: 0.75rem;
 }
 
 .leaflet-interactive:focus {

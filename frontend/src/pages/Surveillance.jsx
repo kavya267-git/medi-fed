@@ -19,7 +19,7 @@ export function ClusterLayerNote({ layer, shown, onToggle }) {
   return (
     <div className="rounded-md border border-line bg-canvas px-3 py-2.5 text-xs leading-relaxed text-muted">
       <label className="flex items-center gap-2 font-semibold text-ink">
-        <input type="checkbox" className="h-4 w-4 accent-[#6b3fa0]" checked={shown} disabled={!clusters.length} onChange={(e) => onToggle(e.target.checked)} />
+        <input type="checkbox" className="h-4 w-4 accent-[#c4adff]" checked={shown} disabled={!clusters.length} onChange={(e) => onToggle(e.target.checked)} />
         <span className="h-3 w-5 rounded-sm bg-surface" style={{ border: `3px solid ${CLUSTER_COLOR}`, opacity: 0.7 }} />
         Cluster of potential hotspots
       </label>
@@ -45,6 +45,7 @@ export function ClusterLayerNote({ layer, shown, onToggle }) {
 
 function SurveillanceResult({ data, selectedId, onSelect }) {
   const [showClusters, setShowClusters] = useState(true)
+  const [basemap, setBasemap] = useState('satellite')
   const hasRates = data.regions.some((r) => r.case_rate !== null)
   const valueKey = hasRates ? 'case_rate' : 'case_count'
   const scale = useMemo(() => buildScale(data.regions.map((r) => r[valueKey])), [data, valueKey])
@@ -85,7 +86,41 @@ function SurveillanceResult({ data, selectedId, onSelect }) {
               // Real boundaries with simulated counts could be mistaken for real cases, so the map says so.
               watermark={data.data_status.geometry_simulated ? null : data.data_status.watermark}
               showClusters={showClusters && Boolean(data.hotspot_clusters?.clusters?.length)}
+              hospitals={data.hospitals || []}
+              basemap={basemap}
             />
+            {data.data_status.geometry_simulated ? null : (
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted">
+                <div role="radiogroup" aria-label="Base map" className="inline-flex rounded-full border border-white/15 p-0.5">
+                  {[
+                    ['satellite', 'Satellite'],
+                    ['plain', 'Plain'],
+                  ].map(([id, label]) => (
+                    <button
+                      key={id}
+                      type="button"
+                      role="radio"
+                      aria-checked={basemap === id}
+                      onClick={() => setBasemap(id)}
+                      className={`rounded-full px-3 py-1 font-medium ${basemap === id ? 'bg-cta text-cta-ink' : 'text-muted hover:text-ink'}`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
+                {data.hospitals?.length ? (
+                  <span className="inline-flex flex-wrap items-center gap-3">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full border-2 border-white bg-ok" aria-hidden="true" /> Hospital online
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2.5 w-2.5 rounded-full border-2 border-white bg-nodata" aria-hidden="true" /> Offline
+                    </span>
+                    <span>Dashed ring: district centre, exact site not given</span>
+                  </span>
+                ) : null}
+              </div>
+            )}
             <ClusterLayerNote layer={data.hotspot_clusters} shown={showClusters} onToggle={setShowClusters} />
             <MapLegend
               scale={scale}

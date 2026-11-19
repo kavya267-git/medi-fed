@@ -39,8 +39,8 @@ function ConfusionMatrix({ matrix, classNames: names }) {
                   key={names[j]}
                   className="h-11 w-20 border border-surface text-center font-medium"
                   style={{
-                    background: `rgba(18, 113, 104, ${0.06 + 0.7 * (count / max)})`,
-                    color: count / max > 0.55 ? '#ffffff' : '#111a2e',
+                    background: `rgba(157, 184, 216, ${0.06 + 0.8 * (count / max)})`,
+                    color: count / max > 0.55 ? '#12233c' : '#ffffff',
                   }}
                 >
                   {formatNumber(count)}
@@ -85,9 +85,9 @@ function Performance({ metrics }) {
           xLabel="Model version"
           percent
           series={[
-            { key: 'accuracy', label: 'Accuracy', color: '#4e5b75' },
-            { key: 'precision', label: 'Precision', color: '#b0661a', dashed: true },
-            { key: 'recall', label: 'Recall', color: '#6a4c9c', dashed: true },
+            { key: 'accuracy', label: 'Accuracy', color: '#c0cee2' },
+            { key: 'precision', label: 'Precision', color: '#f2b84b', dashed: true },
+            { key: 'recall', label: 'Recall', color: '#c4adff', dashed: true },
             { key: 'f1', label: 'F1', color },
           ]}
         />

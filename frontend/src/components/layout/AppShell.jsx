@@ -48,8 +48,8 @@ function Navigation({ onNavigate, layoutId = 'nav-active' }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             classNames(
-              'relative flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-              isActive ? 'text-brand-800' : 'text-muted hover:bg-brand-50/70 hover:text-ink',
+              'relative flex items-center gap-3 rounded-full px-3.5 py-2 text-sm font-medium transition-colors',
+              isActive ? 'text-cta-ink' : 'text-muted hover:bg-white/5 hover:text-ink',
             )
           }
         >
@@ -58,7 +58,7 @@ function Navigation({ onNavigate, layoutId = 'nav-active' }) {
               {isActive ? (
                 <motion.span
                   layoutId={layoutId}
-                  className="absolute inset-0 rounded-lg bg-brand-50 ring-1 ring-brand-100"
+                  className="absolute inset-0 rounded-full bg-cta"
                   transition={{ type: 'spring', stiffness: 500, damping: 40 }}
                   aria-hidden="true"
                 />
@@ -85,7 +85,7 @@ function ModeNotice() {
   const { config } = useSystem()
   if (!config?.demo_mode) return null
   return (
-    <div className="mx-3 rounded-lg border border-line bg-canvas/60 px-3 py-3">
+    <div className="mx-3 rounded-2xl border border-white/10 bg-white/5 px-3 py-3">
       <p className="text-xs font-semibold text-brand-900">Demo mode</p>
       <p className="mt-1 text-xs leading-relaxed text-muted">
         Hospitals and data are simulated. Training and metrics are computed for real on that data.
@@ -112,7 +112,7 @@ export function AppShell() {
       </a>
 
       {/* Sidebar (desktop) */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line/70 bg-white/75 backdrop-blur-xl lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-white/10 bg-canvas/50 backdrop-blur-xl lg:flex">
         <div className="px-5 py-5">
           <Logo />
         </div>
@@ -128,7 +128,7 @@ export function AppShell() {
       {menuOpen ? (
         <div className="fixed inset-0 z-[1200] lg:hidden">
           <button type="button" aria-label="Close menu" className="absolute inset-0 bg-brand-950/50" onClick={() => setMenuOpen(false)} />
-          <div className="relative flex h-full w-72 max-w-[85%] flex-col bg-surface pb-4">
+          <div className="relative flex h-full w-72 max-w-[85%] flex-col bg-canvas pb-4">
             <div className="flex items-center justify-between px-5 py-5">
               <Logo />
               <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="rounded p-1 text-muted">
@@ -144,7 +144,7 @@ export function AppShell() {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-[1000] flex h-14 items-center justify-between gap-3 border-b border-line bg-white/70 px-4 backdrop-blur-xl lg:px-8">
+        <header className="sticky top-0 z-[1000] flex h-14 items-center justify-between gap-3 border-b border-white/10 bg-canvas/60 px-4 backdrop-blur-xl lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -164,7 +164,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={signOut}
-              className="inline-flex h-9 items-center gap-2 rounded-lg border border-line-strong bg-white px-3 text-sm font-medium text-ink hover:bg-brand-50"
+              className="inline-flex h-9 items-center gap-2 rounded-full border border-white/20 px-4 text-sm font-medium text-ink hover:bg-white/10"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
               Sign out

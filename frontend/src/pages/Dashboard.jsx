@@ -1,7 +1,7 @@
-import { Activity, Building2, Layers, Stethoscope } from 'lucide-react'
+import { Activity, ArrowRight, Building2, Layers, Stethoscope } from 'lucide-react'
 import { Link } from 'react-router-dom'
 import { WORLD_IMAGE } from '../assets/illustrations'
-import { FederationHero } from '../components/three/FederationHero'
+import { FloatingLayer } from '../components/three/FloatingLayer'
 import { HotspotStatusBadge, ModalityTag, RoundStatusBadge, SimulatedTag } from '../components/ui/Badge'
 import { Card, CardBody, CardHeader } from '../components/ui/Card'
 import { PageHeader, Stat } from '../components/ui/Misc'
@@ -37,44 +37,43 @@ function ModelPerformance({ models }) {
 function FederationBanner({ data }) {
   const { kpis } = data
   const active = data.active_rounds[0]
-  const hospitals = data.hospitals.map((hospital) => ({ id: hospital.id, online: hospital.online }))
-  return (
-    <section
-      aria-label="Federation status"
-      className="relative overflow-hidden rounded-xl border border-line bg-surface shadow-card"
-    >
-      <div className="grid items-center md:grid-cols-[1fr_1.1fr]">
-        <div className="relative z-10 px-6 py-6 md:px-8 md:py-8">
-          <p className="text-sm font-medium text-brand-700">{active ? 'Training now' : 'Federation'}</p>
-          <p className="mt-2 font-display text-[1.7rem] font-semibold leading-tight tracking-[-0.01em] text-brand-950">
-            {kpis.hospitals_online} of {kpis.participating_hospitals} hospitals online
+    return (
+    <section aria-label="Federation status" className="glass relative overflow-hidden rounded-[28px] shadow-card">
+      <FloatingLayer variant="banner" className="pointer-events-none absolute inset-0" />
+      <div className="relative grid items-center gap-6 md:grid-cols-[1fr_1fr]">
+        <div className="px-6 py-7 md:px-9 md:py-9">
+          <p className="text-sm font-medium text-brand-600">{active ? 'Training now' : 'Federation'}</p>
+          <p className="mt-2 font-display text-[1.9rem] font-bold uppercase leading-[1.1] text-white">
+            {kpis.hospitals_online} of {kpis.participating_hospitals} hospitals
+            <span className="block text-brand-500">online now</span>
           </p>
-          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+          <p className="mt-3 max-w-md text-sm leading-relaxed text-muted">
             {active
               ? `Round ${active.id} is training the ${MODALITIES[active.modality]?.label || active.modality} model with ${active.num_participants} hospitals.`
               : kpis.fl_rounds_total === 0
                 ? 'No round has run yet. Start one to train the first shared model.'
                 : `${kpis.fl_rounds_completed} rounds completed. Patient records stayed at every hospital; only model updates moved.`}
           </p>
-          <div className="mt-5 flex flex-wrap gap-2">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
             <Link
               to="/federated"
-              className="inline-flex h-9 items-center rounded-lg bg-brand-700 px-4 text-sm font-medium text-white hover:bg-brand-800"
+              className="inline-flex h-11 items-center gap-3 rounded-full bg-cta pl-5 pr-1.5 text-sm font-semibold text-cta-ink hover:bg-brand-900"
             >
               {active ? 'Watch the round' : 'Open Federated Learning'}
+              <span className="grid h-8 w-8 place-items-center rounded-full bg-cta-ink text-white" aria-hidden="true">
+                <ArrowRight className="h-4 w-4" />
+              </span>
             </Link>
-            <Link to="/hospitals" className="inline-flex h-9 items-center rounded-lg px-3 text-sm font-medium text-brand-700 hover:bg-brand-50">
+            <Link to="/hospitals" className="inline-flex h-11 items-center rounded-full border border-white/20 px-5 text-sm font-medium text-ink hover:bg-white/10">
               See hospitals
             </Link>
           </div>
         </div>
-        <FederationHero
-          hospitals={hospitals}
-          active={Boolean(active)}
-          cameraZ={7.2}
-          className="h-56 md:h-64"
-          fallback={<img src={WORLD_IMAGE.src} alt="" className="fade-edges h-56 w-full object-contain md:h-64" />}
-        />
+        <div className="flex justify-center px-6 pb-7 md:pb-0 md:pr-9">
+          <div className="float-slow w-full max-w-md overflow-hidden rounded-[24px] border border-white/15 bg-white/90 p-1.5 shadow-[0_30px_60px_-30px_rgb(3_10_24/0.9)]">
+            <img src={WORLD_IMAGE.src} alt="" className="block h-auto w-full rounded-[18px]" />
+          </div>
+        </div>
       </div>
     </section>
   )

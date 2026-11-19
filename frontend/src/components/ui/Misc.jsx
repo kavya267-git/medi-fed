@@ -42,11 +42,11 @@ export function AnimatedNumber({ value }) {
 /** One headline number with its label and an optional line of context. */
 export function Stat({ label, value, detail, icon: Icon }) {
   return (
-    <div className="rounded-xl border border-line bg-surface px-5 py-4 shadow-card">
+    <div className="rounded-2xl border border-white/10 bg-surface/75 px-5 py-4 backdrop-blur-md shadow-card">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted">{label}</p>
         {Icon ? (
-          <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-50 text-brand-600">
+          <span className="grid h-8 w-8 place-items-center rounded-xl border border-white/15 text-brand-600">
             <Icon className="h-4 w-4" aria-hidden="true" />
           </span>
         ) : null}
@@ -109,8 +109,8 @@ export function Field({ label, hint, children, htmlFor }) {
 }
 
 export const inputClass =
-  'block h-10 w-full rounded-lg border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-faint ' +
-  'focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-canvas disabled:text-faint'
+  'block h-11 w-full rounded-xl border border-white/20 bg-white/5 px-3.5 text-sm text-ink placeholder:text-faint ' +
+  'focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/30 disabled:bg-white/5 disabled:text-faint'
 
 export function Select({ value, onChange, options, id, className = '', ...rest }) {
   return (
@@ -145,7 +145,7 @@ export function Tabs({ value, onChange, options, label }) {
             onClick={() => onChange(option.value)}
             className={classNames(
               'rounded px-3.5 py-1.5 text-sm font-medium transition-colors',
-              selected ? 'bg-brand-700 text-white' : 'text-muted hover:text-ink',
+              selected ? 'bg-cta text-cta-ink' : 'text-muted hover:text-ink',
             )}
           >
             {option.label}

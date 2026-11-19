@@ -54,6 +54,8 @@ class HotspotResponse(OpenModel):
     summary: Dict[str, int]
     disclaimer: str
     data_status: DataStatus
+    #: Hospital sites on the map (real boundaries only): own location when given, else the district centre.
+    hospitals: List[Dict[str, Any]] = []
 
 
 class ForecastResponse(OpenModel):

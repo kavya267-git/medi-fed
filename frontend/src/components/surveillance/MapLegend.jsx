@@ -40,7 +40,7 @@ export function MapLegend({ scale, valueLabel, digits, summary }) {
                   style={{
                     border: flagged
                       ? `${status === 'CANDIDATE_HOTSPOT' ? 3 : 2}px ${status === 'ELEVATED' ? 'dashed' : 'solid'} ${meta.color}`
-                      : '1px solid #bccae0',
+                      : '1px solid #41597f',
                   }}
                 />
                 <span className="text-ink">{meta.label}</span>

@@ -49,6 +49,9 @@ TABLES: Dict[str, List[Column]] = {
         ("region_id", "text", ""),
         ("declared_modalities", "json", ""),
         ("data_check", "json", ""),
+        # The hospital's own site, as entered at registration (a public building, not patient data).
+        ("latitude", "real", ""),
+        ("longitude", "real", ""),
     ],
     # Requests from the public "Register your hospital" form. Organisation and contact details only:
     # no patient-level field, ever (see analytics/privacy/validation.py).
@@ -67,6 +70,8 @@ TABLES: Dict[str, List[Column]] = {
         ("reviewed_at", "timestamp", ""),
         ("reason", "text", ""),
         ("created_at", "timestamp", "NOT NULL"),
+        ("latitude", "real", ""),
+        ("longitude", "real", ""),
     ],
     # Global model weights kept in the database (MODEL_WEIGHTS_IN_DATABASE=true), for hosts without a
     # persistent disk, such as a free Hugging Face Space. Only the newest MODEL_KEEP_VERSIONS per modality.

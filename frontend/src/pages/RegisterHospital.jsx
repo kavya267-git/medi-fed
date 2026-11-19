@@ -28,6 +28,8 @@ export default function RegisterHospital() {
     password: '',
     password_confirm: '',
   })
+  const [site, setSite] = useState({ latitude: '', longitude: '' })
+  const [locating, setLocating] = useState(false)
   const [kinds, setKinds] = useState({})
   const [confirmed, setConfirmed] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -65,9 +67,16 @@ export default function RegisterHospital() {
       if (!Number.isInteger(value) || value < 1) return setError(`Enter an approximate number of ${kind.label} records.`)
       counts[kind.id] = value
     }
+    const hasSite = site.latitude !== '' || site.longitude !== ''
+    const latitude = Number(site.latitude)
+    const longitude = Number(site.longitude)
+    if (hasSite && (site.latitude === '' || site.longitude === '' || !Number.isFinite(latitude) || !Number.isFinite(longitude))) {
+      return setError('Give both latitude and longitude for the hospital location, or leave both empty.')
+    }
     setBusy(true)
     try {
       const result = await api.submitRegistration({
+        ...(hasSite ? { latitude, longitude } : {}),
         ...form,
         hospital_name: form.hospital_name.trim(),
         contact_name: form.contact_name.trim(),
@@ -132,6 +141,56 @@ export default function RegisterHospital() {
                 options={[{ value: '', label: 'Choose a region…' }, ...regions.map((r) => ({ value: r.region_id, label: r.name }))]}
               />
             </Field>
+            <fieldset className="rounded-xl border border-white/10 px-4 py-3">
+              <legend className="px-1 text-sm font-medium text-ink">Hospital location on the map (optional)</legend>
+              <p className="text-xs leading-relaxed text-muted">
+                Shown as a pin on the surveillance map. Leave empty to use the centre of the region instead.
+              </p>
+              <div className="mt-3 grid gap-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+                <Field label="Latitude" htmlFor="latitude">
+                  <input
+                    id="latitude"
+                    inputMode="decimal"
+                    className={inputClass}
+                    placeholder="e.g. 15.8497"
+                    value={site.latitude}
+                    onChange={(event) => setSite((s) => ({ ...s, latitude: event.target.value.trim() }))}
+                  />
+                </Field>
+                <Field label="Longitude" htmlFor="longitude">
+                  <input
+                    id="longitude"
+                    inputMode="decimal"
+                    className={inputClass}
+                    placeholder="e.g. 74.4977"
+                    value={site.longitude}
+                    onChange={(event) => setSite((s) => ({ ...s, longitude: event.target.value.trim() }))}
+                  />
+                </Field>
+                <Button
+                  size="sm"
+                  className="h-11"
+                  loading={locating}
+                  disabled={typeof navigator === 'undefined' || !navigator.geolocation}
+                  onClick={() => {
+                    setLocating(true)
+                    navigator.geolocation.getCurrentPosition(
+                      (position) => {
+                        setSite({ latitude: position.coords.latitude.toFixed(6), longitude: position.coords.longitude.toFixed(6) })
+                        setLocating(false)
+                      },
+                      () => {
+                        setError('Could not read this device’s location. Type the coordinates instead.')
+                        setLocating(false)
+                      },
+                      { timeout: 10000 },
+                    )
+                  }}
+                >
+                  Use this device’s location
+                </Button>
+              </div>
+            </fieldset>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Contact name" htmlFor="contact-name">
                 <input id="contact-name" className={inputClass} maxLength={80} autoComplete="name" value={form.contact_name} onChange={set('contact_name')} />
@@ -170,7 +229,7 @@ export default function RegisterHospital() {
                   return (
                     <div key={kind.id} className="flex flex-wrap items-center gap-3">
                       <label className="flex min-w-0 flex-1 items-center gap-2 text-sm text-ink sm:flex-none sm:basis-64">
-                        <input type="checkbox" className="h-4 w-4 shrink-0 accent-[#24489a]" checked={on} onChange={() => toggleKind(kind.id)} />
+                        <input type="checkbox" className="h-4 w-4 shrink-0 accent-[#9db8d8]" checked={on} onChange={() => toggleKind(kind.id)} />
                         <span className="whitespace-nowrap font-medium">{kind.label}</span>
                         <span className="truncate text-xs text-muted">{kind.hint}</span>
                       </label>
@@ -196,7 +255,7 @@ export default function RegisterHospital() {
             <label className="flex items-start gap-2.5 rounded-md border border-line bg-canvas p-3 text-sm text-ink">
               <input
                 type="checkbox"
-                className="mt-0.5 h-4 w-4 accent-[#24489a]"
+                className="mt-0.5 h-4 w-4 accent-[#9db8d8]"
                 checked={confirmed}
                 onChange={(e) => setConfirmed(e.target.checked)}
               />

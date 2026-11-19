@@ -1,10 +1,10 @@
 /** Labels and colours used in more than one place. */
 
 export const MODALITIES = {
-  ehr: { id: 'ehr', label: 'EHR', name: 'Electronic health records', target: 'TabNet', color: '#4353b3', soft: 'bg-ehr-soft text-ehr' },
-  ecg: { id: 'ecg', label: 'ECG', name: 'Electrocardiogram', target: 'CNN-BiLSTM', color: '#b03a60', soft: 'bg-ecg-soft text-ecg' },
-  xray: { id: 'xray', label: 'X-ray', name: 'Chest X-ray', target: 'EfficientNet-B3', color: '#2a7b99', soft: 'bg-xray-soft text-xray' },
-  diabetes: { id: 'diabetes', label: 'Diabetes', name: 'Diabetes screening', target: 'MLP', color: '#6a4aa8', soft: 'bg-diabetes-soft text-diabetes' },
+  ehr: { id: 'ehr', label: 'EHR', name: 'Electronic health records', target: 'TabNet', color: '#a3b0ff', soft: 'bg-ehr-soft text-ehr' },
+  ecg: { id: 'ecg', label: 'ECG', name: 'Electrocardiogram', target: 'CNN-BiLSTM', color: '#ff9bb9', soft: 'bg-ecg-soft text-ecg' },
+  xray: { id: 'xray', label: 'X-ray', name: 'Chest X-ray', target: 'EfficientNet-B3', color: '#7fd6f0', soft: 'bg-xray-soft text-xray' },
+  diabetes: { id: 'diabetes', label: 'Diabetes', name: 'Diabetes screening', target: 'MLP', color: '#c9b2ff', soft: 'bg-diabetes-soft text-diabetes' },
 }
 export const MODALITY_ORDER = ['ehr', 'ecg', 'xray', 'diabetes']
 
@@ -36,10 +36,10 @@ export const PARTICIPANT_LABELS = {
 
 /** Surveillance statuses. A flagged region is a candidate for review, never a confirmed outbreak. */
 export const HOTSPOT_STATUS = {
-  CANDIDATE_HOTSPOT: { label: 'Potential hotspot', color: '#b3261e', tone: 'alert' },
-  ELEVATED: { label: 'Elevated', color: '#a4680e', tone: 'warn' },
-  NORMAL: { label: 'Normal', color: '#2a7a57', tone: 'ok' },
-  INSUFFICIENT_DATA: { label: 'Insufficient data', color: '#84918d', tone: 'nodata' },
+  CANDIDATE_HOTSPOT: { label: 'Potential hotspot', color: '#ff8080', tone: 'alert' },
+  ELEVATED: { label: 'Elevated', color: '#f2b84b', tone: 'warn' },
+  NORMAL: { label: 'Normal', color: '#5fd3a0', tone: 'ok' },
+  INSUFFICIENT_DATA: { label: 'Insufficient data', color: '#8b98ad', tone: 'nodata' },
 }
 export const HOTSPOT_ORDER = ['CANDIDATE_HOTSPOT', 'ELEVATED', 'NORMAL', 'INSUFFICIENT_DATA']
 
