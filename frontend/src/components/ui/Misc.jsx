@@ -1,3 +1,4 @@
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react'
 import { Info, X } from 'lucide-react'
 import { useEffect, useId, useRef } from 'react'
 import { classNames } from '../../utils/format'
@@ -14,15 +15,45 @@ export function PageHeader({ title, description, actions }) {
   )
 }
 
+/** Counts up to a whole number once, when it first appears; anything else is shown as it is. */
+export function AnimatedNumber({ value }) {
+  const reduce = useReducedMotion()
+  const numeric = typeof value === 'number' && Number.isInteger(value) && value >= 0
+  const count = useMotionValue(0)
+  const shown = useTransform(count, (latest) => Math.round(latest).toLocaleString())
+  useEffect(() => {
+    if (!numeric) return undefined
+    if (reduce) {
+      count.set(value)
+      return undefined
+    }
+    const controls = animate(count, value, { duration: 0.9, ease: [0.22, 1, 0.36, 1] })
+    return () => controls.stop()
+  }, [numeric, value, reduce, count])
+  if (!numeric) return value
+  return (
+    <>
+      <span className="sr-only">{value.toLocaleString()}</span>
+      <motion.span aria-hidden="true">{shown}</motion.span>
+    </>
+  )
+}
+
 /** One headline number with its label and an optional line of context. */
 export function Stat({ label, value, detail, icon: Icon }) {
   return (
-    <div className="rounded-lg border border-line bg-surface px-5 py-4 shadow-card">
+    <div className="rounded-2xl border border-line/80 bg-surface px-5 py-4 shadow-card">
       <div className="flex items-center justify-between gap-3">
         <p className="text-sm text-muted">{label}</p>
-        {Icon ? <Icon className="h-4 w-4 text-faint" aria-hidden="true" /> : null}
+        {Icon ? (
+          <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-50 text-brand-600">
+            <Icon className="h-4 w-4" aria-hidden="true" />
+          </span>
+        ) : null}
       </div>
-      <p className="mt-2 text-3xl font-semibold leading-none tracking-tight text-ink">{value}</p>
+      <p className="mt-2 font-display text-3xl font-semibold leading-none tracking-tight text-ink">
+        <AnimatedNumber value={value} />
+      </p>
       {detail ? <p className="mt-2 text-[13px] leading-snug text-muted">{detail}</p> : null}
     </div>
   )
@@ -78,7 +109,7 @@ export function Field({ label, hint, children, htmlFor }) {
 }
 
 export const inputClass =
-  'block h-10 w-full rounded-md border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-faint ' +
+  'block h-10 w-full rounded-xl border border-line-strong bg-surface px-3 text-sm text-ink placeholder:text-faint ' +
   'focus:border-brand-600 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:bg-canvas disabled:text-faint'
 
 export function Select({ value, onChange, options, id, className = '', ...rest }) {

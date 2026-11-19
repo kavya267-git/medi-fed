@@ -1,6 +1,7 @@
 import { LogOut, Menu, X } from 'lucide-react'
 import { useCallback, useEffect, useState } from 'react'
 import { NavLink, Outlet, useLocation } from 'react-router-dom'
+import { motion } from 'motion/react'
 import { useAuth } from '../../context/AuthContext'
 import { useSystem } from '../../context/SystemContext'
 import { ROLE_LABELS } from '../../utils/constants'
@@ -34,7 +35,7 @@ function usePendingRegistrations(user) {
   return count
 }
 
-function Navigation({ onNavigate }) {
+function Navigation({ onNavigate, layoutId = 'nav-active' }) {
   const { user } = useAuth()
   const pending = usePendingRegistrations(user)
   return (
@@ -47,21 +48,33 @@ function Navigation({ onNavigate }) {
           onClick={onNavigate}
           className={({ isActive }) =>
             classNames(
-              'flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors',
-              isActive ? 'bg-brand-700 text-white' : 'text-brand-100 hover:bg-brand-800 hover:text-white',
+              'relative flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-colors',
+              isActive ? 'text-white' : 'text-muted hover:bg-brand-50 hover:text-brand-800',
             )
           }
         >
-          <Icon className="h-4 w-4 shrink-0" aria-hidden="true" />
-          {label}
+          {({ isActive }) => (
+            <>
+              {isActive ? (
+                <motion.span
+                  layoutId={layoutId}
+                  className="absolute inset-0 rounded-xl bg-linear-to-r from-brand-600 to-violet shadow-[0_8px_20px_-10px_rgb(45_89_181/0.7)]"
+                  transition={{ type: 'spring', stiffness: 420, damping: 36 }}
+                  aria-hidden="true"
+                />
+              ) : null}
+              <Icon className="relative h-4 w-4 shrink-0" aria-hidden="true" />
+              <span className="relative">{label}</span>
           {badge === 'pendingRegistrations' && pending > 0 ? (
             <span
-              className="ml-auto rounded-full bg-warn px-2 py-0.5 text-xs font-semibold text-white"
+              className="relative ml-auto rounded-full bg-warn px-2 py-0.5 text-xs font-semibold text-white"
               aria-label={`${pending} pending`}
             >
               {pending}
             </span>
           ) : null}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>
@@ -72,9 +85,9 @@ function ModeNotice() {
   const { config } = useSystem()
   if (!config?.demo_mode) return null
   return (
-    <div className="mx-3 rounded-md border border-brand-700 bg-brand-950/40 px-3 py-3">
-      <p className="text-xs font-semibold text-white">Demo mode</p>
-      <p className="mt-1 text-xs leading-relaxed text-brand-200">
+    <div className="mx-3 rounded-xl border border-brand-100 bg-brand-50/70 px-3 py-3">
+      <p className="text-xs font-semibold text-brand-900">Demo mode</p>
+      <p className="mt-1 text-xs leading-relaxed text-muted">
         Hospitals and data are simulated. Training and metrics are computed for real on that data.
       </p>
     </div>
@@ -99,9 +112,9 @@ export function AppShell() {
       </a>
 
       {/* Sidebar (desktop) */}
-      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col bg-brand-900 lg:flex">
+      <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-line/70 bg-white/75 backdrop-blur-xl lg:flex">
         <div className="px-5 py-5">
-          <Logo light />
+          <Logo />
         </div>
         <div className="flex-1 overflow-y-auto pb-4">
           <Navigation />
@@ -115,15 +128,15 @@ export function AppShell() {
       {menuOpen ? (
         <div className="fixed inset-0 z-[1200] lg:hidden">
           <button type="button" aria-label="Close menu" className="absolute inset-0 bg-brand-950/50" onClick={() => setMenuOpen(false)} />
-          <div className="relative flex h-full w-72 max-w-[85%] flex-col bg-brand-900 pb-4">
+          <div className="relative flex h-full w-72 max-w-[85%] flex-col bg-surface pb-4">
             <div className="flex items-center justify-between px-5 py-5">
-              <Logo light />
-              <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="rounded p-1 text-brand-100">
+              <Logo />
+              <button type="button" aria-label="Close menu" onClick={() => setMenuOpen(false)} className="rounded p-1 text-muted">
                 <X className="h-5 w-5" aria-hidden="true" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto">
-              <Navigation onNavigate={() => setMenuOpen(false)} />
+              <Navigation onNavigate={() => setMenuOpen(false)} layoutId="nav-active-mobile" />
             </div>
             <ModeNotice />
           </div>
@@ -131,7 +144,7 @@ export function AppShell() {
       ) : null}
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="sticky top-0 z-[1000] flex h-14 items-center justify-between gap-3 border-b border-line bg-surface/95 px-4 backdrop-blur lg:px-8">
+        <header className="sticky top-0 z-[1000] flex h-14 items-center justify-between gap-3 border-b border-line bg-white/70 px-4 backdrop-blur-xl lg:px-8">
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
@@ -151,7 +164,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={signOut}
-              className="inline-flex h-9 items-center gap-2 rounded-md border border-line-strong px-3 text-sm font-medium text-ink hover:bg-canvas"
+              className="inline-flex h-9 items-center gap-2 rounded-xl border border-line-strong bg-white/80 px-3 text-sm font-medium text-ink hover:bg-brand-50"
             >
               <LogOut className="h-4 w-4" aria-hidden="true" />
               Sign out
@@ -159,7 +172,15 @@ export function AppShell() {
           </div>
         </header>
         <main id="main" className="mx-auto w-full max-w-[1320px] flex-1 px-4 py-7 lg:px-8">
-          <Outlet />
+          {/* Each page arrives with one short rise; the navigation pill slides to show where you went. */}
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <Outlet />
+          </motion.div>
         </main>
       </div>
     </div>

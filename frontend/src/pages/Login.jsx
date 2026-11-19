@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Link, Navigate, useLocation } from 'react-router-dom'
 import { NETWORK_IMAGE } from '../assets/illustrations'
 import { Logo } from '../components/layout/Logo'
+import { FederationHero } from '../components/three/FederationHero'
+import { motion } from 'motion/react'
 import { Button } from '../components/ui/Button'
 import { Field, inputClass } from '../components/ui/Misc'
 import { LoadingState } from '../components/ui/StateViews'
@@ -140,22 +142,46 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* What the platform is, for someone seeing it for the first time. */}
       {/* Stays one screen tall while the form column scrolls, so the privacy note is always in view. */}
-      <section className="sticky top-0 hidden h-screen flex-col overflow-hidden bg-canvas lg:flex">
-        <div className="px-12 pt-10">
+      <section className="hero-sky sticky top-0 hidden h-screen flex-col overflow-hidden lg:flex">
+        <div className="relative z-10 px-12 pt-10">
           <Logo />
-          <div className="mt-10 max-w-lg">
-            <h1 className="text-[2.1rem] font-semibold leading-[1.15] tracking-tight text-brand-950">
+          <motion.div
+            className="mt-10 max-w-xl"
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.7, ease: [0.22, 1, 0.36, 1] }}
+          >
+            <h1 className="font-display text-[2.5rem] font-semibold leading-[1.08] tracking-[-0.02em] text-brand-950">
               Hospitals train shared models together. Patient records stay where they are.
             </h1>
-            <p className="mt-5 text-base leading-relaxed text-muted">
-              Each hospital trains on its own EHR, ECG and chest X-ray data. Only model updates travel to the coordinator, which averages
-              them into a shared model and sends it back.
+            <p className="mt-5 max-w-lg text-base leading-relaxed text-muted">
+              Each hospital trains on its own EHR, ECG, X-ray and diabetes data. Only model updates travel to the coordinator, which
+              averages them into a shared model and sends it back.
             </p>
-          </div>
+          </motion.div>
         </div>
-        {/* Directly under the paragraph; its edges fade into the page background (#eef3fb). */}
-        <img src={NETWORK_IMAGE.src} alt={NETWORK_IMAGE.alt} className="fade-edges mt-6 min-h-0 w-full shrink object-contain px-6" />
-        <div className="mt-auto px-12 pb-10 pt-6">
+        <motion.div
+          className="relative min-h-0 flex-1"
+          initial={{ opacity: 0, scale: 0.96 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.1, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+        >
+          <FederationHero
+            className="absolute inset-0"
+            fallback={<img src={NETWORK_IMAGE.src} alt={NETWORK_IMAGE.alt} className="fade-edges h-full w-full object-contain px-6" />}
+          />
+          <div className="pointer-events-none absolute bottom-3 left-12 flex gap-5 text-xs text-muted">
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-brand-600" aria-hidden="true" />
+              Model updates to the coordinator
+            </span>
+            <span className="inline-flex items-center gap-2">
+              <span className="h-2 w-2 rounded-full bg-violet" aria-hidden="true" />
+              Global model back to hospitals
+            </span>
+          </div>
+        </motion.div>
+        <div className="relative z-10 px-12 pb-10 pt-4">
           <p className="max-w-lg text-xs leading-relaxed text-muted">
             Federated learning reduces the need to centralise raw patient data. It does not, on its own, guarantee privacy. This is a
             research prototype and not a medical device.
@@ -163,7 +189,7 @@ export default function Login() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center px-5 py-10">
+      <section className="flex items-center justify-center bg-surface px-5 py-10">
         <div className="w-full max-w-sm">
           <div className="mb-6 lg:hidden">
             <Logo />

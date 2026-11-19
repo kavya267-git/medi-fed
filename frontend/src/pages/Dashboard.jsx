@@ -1,5 +1,7 @@
 import { Activity, Building2, Layers, Stethoscope } from 'lucide-react'
 import { Link } from 'react-router-dom'
+import { WORLD_IMAGE } from '../assets/illustrations'
+import { FederationHero } from '../components/three/FederationHero'
 import { HotspotStatusBadge, ModalityTag, RoundStatusBadge, SimulatedTag } from '../components/ui/Badge'
 import { Card, CardBody, CardHeader } from '../components/ui/Card'
 import { PageHeader, Stat } from '../components/ui/Misc'
@@ -28,6 +30,53 @@ function ModelPerformance({ models }) {
         )
       })}
     </ul>
+  )
+}
+
+/** The live federation: who is online, what is training now, drawn as the network it is. */
+function FederationBanner({ data }) {
+  const { kpis } = data
+  const active = data.active_rounds[0]
+  const hospitals = data.hospitals.map((hospital) => ({ id: hospital.id, online: hospital.online }))
+  return (
+    <section
+      aria-label="Federation status"
+      className="relative overflow-hidden rounded-3xl border border-brand-100 bg-linear-to-br from-white via-brand-50 to-violet-soft shadow-card"
+    >
+      <div className="grid items-center md:grid-cols-[1fr_1.1fr]">
+        <div className="relative z-10 px-6 py-6 md:px-8 md:py-8">
+          <p className="text-sm font-medium text-brand-700">{active ? 'Training now' : 'Federation'}</p>
+          <p className="mt-2 font-display text-[1.7rem] font-semibold leading-tight tracking-[-0.01em] text-brand-950">
+            {kpis.hospitals_online} of {kpis.participating_hospitals} hospitals online
+          </p>
+          <p className="mt-2 max-w-md text-sm leading-relaxed text-muted">
+            {active
+              ? `Round ${active.id} is training the ${MODALITIES[active.modality]?.label || active.modality} model with ${active.num_participants} hospitals.`
+              : kpis.fl_rounds_total === 0
+                ? 'No round has run yet. Start one to train the first shared model.'
+                : `${kpis.fl_rounds_completed} rounds completed. Patient records stayed at every hospital; only model updates moved.`}
+          </p>
+          <div className="mt-5 flex flex-wrap gap-2">
+            <Link
+              to="/federated"
+              className="inline-flex h-9 items-center rounded-xl bg-linear-to-r from-brand-600 to-brand-500 px-4 text-sm font-medium text-white shadow-[0_8px_18px_-10px_rgb(45_89_181/0.8)] hover:from-brand-700 hover:to-brand-600"
+            >
+              {active ? 'Watch the round' : 'Open Federated Learning'}
+            </Link>
+            <Link to="/hospitals" className="inline-flex h-9 items-center rounded-xl px-3 text-sm font-medium text-brand-700 hover:bg-white/70">
+              See hospitals
+            </Link>
+          </div>
+        </div>
+        <FederationHero
+          hospitals={hospitals}
+          active={Boolean(active)}
+          cameraZ={6.6}
+          className="h-56 md:h-64"
+          fallback={<img src={WORLD_IMAGE.src} alt="" className="fade-edges h-56 w-full object-contain md:h-64" />}
+        />
+      </div>
+    </section>
   )
 }
 
@@ -326,6 +375,7 @@ export default function Dashboard() {
                 </div>
               ) : null}
 
+              <FederationBanner data={data} />
               <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
                 <Stat
                   label="Participating hospitals"
@@ -333,7 +383,7 @@ export default function Dashboard() {
                   detail={`${kpis.hospitals_online} online now`}
                   icon={Building2}
                 />
-                <Stat label="Healthcare modalities" value={kpis.modalities} detail="EHR, ECG and X-ray" icon={Stethoscope} />
+                <Stat label="Healthcare modalities" value={kpis.modalities} detail="EHR, ECG, X-ray and diabetes" icon={Stethoscope} />
                 <Stat
                   label="FL rounds"
                   value={kpis.fl_rounds_total === 0 ? DASH : kpis.fl_rounds_completed}
@@ -344,10 +394,12 @@ export default function Dashboard() {
                   }
                   icon={Activity}
                 />
-                <div className="rounded-lg border border-line bg-surface px-5 py-4 shadow-card">
+                <div className="rounded-2xl border border-line/80 bg-surface px-5 py-4 shadow-card">
                   <div className="flex items-center justify-between gap-3">
                     <p className="text-sm text-muted">Global model performance</p>
-                    <Layers className="h-4 w-4 text-faint" aria-hidden="true" />
+                    <span className="grid h-8 w-8 place-items-center rounded-full bg-brand-50 text-brand-600">
+                      <Layers className="h-4 w-4" aria-hidden="true" />
+                    </span>
                   </div>
                   <ModelPerformance models={data.models} />
                   <p className="mt-2 text-xs leading-snug text-muted">

@@ -6,6 +6,7 @@
 */
 @theme {
   --font-sans: 'IBM Plex Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-display: 'Sora', 'IBM Plex Sans', ui-sans-serif, system-ui, sans-serif;
   --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /*
@@ -26,9 +27,16 @@
   --color-brand-800: #1b3878;
   --color-brand-700: #24489a;
   --color-brand-600: #2d59b5;
+  --color-brand-500: #3f6fd8;
+  --color-brand-400: #6b93e6;
+  --color-brand-300: #93b3ee;
   --color-brand-200: #b6cdf2;
   --color-brand-100: #d9e5f9;
   --color-brand-50: #ecf2fc;
+
+  /* The violet of the global model in the illustrations (the coordinator's glow). */
+  --color-violet: #7c5cff;
+  --color-violet-soft: #eeeaff;
 
   /* One hue per data modality, used consistently across pages. */
   --color-ehr: #4353b3;
@@ -55,17 +63,26 @@
   --color-forecast: #6a4c9c;
   --color-forecast-soft: #ede7f6;
 
-  --shadow-card: 0 1px 2px rgb(17 26 46 / 0.05), 0 1px 1px rgb(17 26 46 / 0.03);
-  --shadow-raised: 0 10px 30px -12px rgb(17 40 94 / 0.24);
+  --shadow-card: 0 1px 2px rgb(17 40 94 / 0.04), 0 8px 24px -16px rgb(17 40 94 / 0.18);
+  --shadow-raised: 0 18px 40px -18px rgb(17 40 94 / 0.32);
 }
 
 @layer base {
   html {
     font-family: var(--font-sans);
     color: var(--color-ink);
-    background: var(--color-canvas);
+    background:
+      radial-gradient(1200px 520px at 85% -10%, rgb(124 92 255 / 0.07), transparent 60%),
+      radial-gradient(900px 480px at 10% 0%, rgb(45 89 181 / 0.08), transparent 60%),
+      var(--color-canvas);
+    background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     font-feature-settings: 'tnum' 1; /* tabular numerals: numbers line up in tables and KPIs */
+  }
+
+  h1 {
+    font-family: var(--font-display);
+    letter-spacing: -0.015em;
   }
 
   body {
@@ -86,6 +103,14 @@
   button:disabled {
     cursor: not-allowed;
   }
+}
+
+/* The sign-in hero: the pale sky of the illustrations, with a soft glow where the coordinator sits. */
+.hero-sky {
+  background:
+    radial-gradient(520px 360px at 50% 62%, rgb(124 92 255 / 0.14), transparent 70%),
+    radial-gradient(700px 420px at 50% 70%, rgb(45 89 181 / 0.12), transparent 70%),
+    linear-gradient(180deg, #f5f8fe 0%, #e8effb 100%);
 }
 
 /* The round progress pulse on the Federated Learning page (the one animated element). */
