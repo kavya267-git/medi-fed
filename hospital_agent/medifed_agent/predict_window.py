@@ -13,7 +13,7 @@ from typing import Callable, Dict, Optional
 from ml.common.tabular import tabular_schema
 from ml.prediction.local import DISCLAIMER, format_value
 
-LABELS = {"ehr": "EHR adverse outcome", "diabetes": "Diabetes"}
+LABELS = {"ehr": "EHR adverse outcome", "diabetes": "Diabetes", "ecg": "ECG heartbeat class"}
 RISK = "#a3261b"
 CALM = "#2a7a57"
 
@@ -54,7 +54,12 @@ class PredictWindow:
         chooser = ttk.Frame(outer)
         chooser.pack(fill="x")
         ttk.Label(chooser, text="Model").pack(side="left")
-        self.models = session.saved_models()
+        self.models = dict(session.saved_models())
+        ecg_info = session.ecg_model_info()
+        if ecg_info:
+            self.models["ecg"] = ecg_info
+        self.ecg_beats = None
+        self.ecg_results = None
         self.choice = tk.StringVar()
         self.titles = {model_title(m, info): m for m, info in self.models.items()}
         self.combo = ttk.Combobox(chooser, textvariable=self.choice, values=list(self.titles), state="readonly", width=60)
@@ -73,7 +78,7 @@ class PredictWindow:
         ttk.Button(buttons, text="Clear", command=self.clear).pack(side="left", padx=8)
         ttk.Button(buttons, text="Score a CSV file…", command=self.score_file).pack(side="left")
 
-        self.headline = tk.Label(outer, text="", font=("Segoe UI", 14, "bold"), anchor="w", justify="left")
+        self.headline = tk.Label(outer, text="", font=("Segoe UI", 14, "bold"), anchor="w", justify="left", wraplength=700)
         self.headline.pack(fill="x")
         self.details = tk.Text(outer, height=12, wrap="word", font=("Segoe UI", 10), state="disabled", relief="flat")
         self.details.pack(fill="both", expand=True, pady=(6, 0))
@@ -83,7 +88,7 @@ class PredictWindow:
             self._build_form()
         else:
             self.model_note.configure(
-                text="No global model for EHR or diabetes on this computer yet. Connect, take part in a round, and "
+                text="No global model for EHR, diabetes or ECG on this computer yet. Connect, take part in a round, and "
                 "the agent keeps the model the round produces."
             )
             self.predict_button.configure(state="disabled")
@@ -109,6 +114,10 @@ class PredictWindow:
         if info.get("downloaded_at"):
             notes.append(f"saved {info['downloaded_at']}")
         self.model_note.configure(text=" · ".join(notes))
+        if modality == "ecg":
+            self._build_ecg_form()
+            return
+        self.predict_button.configure(text="Predict")
         schema = tabular_schema(modality)
         columns = 2
         for index, feature in enumerate(schema.features):
@@ -129,6 +138,124 @@ class PredictWindow:
         )
         self._show("", "", None)
 
+    # ------------------------------------------------------------ ECG
+    def _build_ecg_form(self) -> None:
+        self.predict_button.configure(text="Open heartbeat file…", state="normal")
+        ttk.Label(
+            self.form,
+            text="Choose a file of single heartbeats: one beat per row, 187 samples at 125 Hz (the MIT-BIH heartbeat "
+            "format; a 188th column with a reference label is allowed). The global model labels every beat as "
+            "N (normal), S (supraventricular ectopic), V (ventricular ectopic) or F (fusion).",
+            style="Muted.TLabel",
+            wraplength=680,
+        ).pack(anchor="w")
+        row = ttk.Frame(self.form)
+        row.pack(fill="x", pady=(6, 0))
+        ttk.Label(row, text="Show beat").pack(side="left")
+        self.beat_no = tk.IntVar(value=1)
+        self.beat_spin = ttk.Spinbox(row, from_=1, to=1, textvariable=self.beat_no, width=8, command=self._draw_beat)
+        self.beat_spin.pack(side="left", padx=6)
+        self.beat_spin.bind("<Return>", lambda _e: self._draw_beat())
+        self.canvas = tk.Canvas(self.form, width=680, height=170, bg="white", highlightthickness=1,
+                                highlightbackground="#c9d3e0")
+        self.canvas.pack(fill="x", pady=6)
+        self._show("", "", None)
+
+    def open_ecg(self) -> None:
+        chosen = filedialog.askopenfilename(
+            title="Choose a file of heartbeats",
+            filetypes=[("Heartbeat files", "*.csv *.npy *.npz"), ("All files", "*.*")],
+        )
+        if not chosen:
+            return
+        source = Path(chosen)
+        target = source.with_name(f"{source.stem}_ecg_predictions.csv")
+        self.predict_button.configure(state="disabled")
+        self._show("Labelling the heartbeats…", "", None)
+
+        def work():
+            from ml.prediction.ecg import read_beats
+
+            beats, labels = read_beats(source)
+            predictor = self.session.ecg_predictor()
+            table, summary = predictor.score(beats, labels)
+            table.to_csv(target, index=False)
+            first = predictor.predict_beats(beats[:1])[0]
+            return beats, table, summary, first
+
+        def done(result, error):
+            self.predict_button.configure(state="normal")
+            if error:
+                self._show("Cannot label the heartbeats", str(error), RISK)
+                return
+            beats, table, summary, _first = result
+            self.ecg_beats, self.ecg_results = beats, table
+            self.beat_spin.configure(to=len(beats))
+            self.beat_no.set(1)
+            self._render_ecg(summary, target)
+            self._draw_beat()
+            self.log(f"labelled {len(beats)} heartbeat(s) from {source.name} on this computer; nothing was sent")
+
+        self.run_in_background(work, done)
+
+    def _render_ecg(self, summary: dict, target: Path) -> None:
+        from ml.prediction.ecg import NAMES, describe_summary
+
+        abnormal = summary["abnormal"]
+        headline = describe_summary(summary)
+        lines = []
+        if "agreement" in summary:
+            lines.append(
+                f"The file had reference labels: the model agreed on {summary['agreement']:.0%} of "
+                f"{summary['reference_beats']} beats."
+            )
+        lines.append("First beats:")
+        for _, r in self.ecg_results.head(12).iterrows():
+            region = f", key region {r['key_region_ms']} ms" if r["key_region_ms"] else ""
+            ref = f" (reference {r['reference']})" if "reference" in r and r["reference"] else ""
+            lines.append(f"   • Beat {r['beat']}: {r['prediction']} – {NAMES[r['prediction']]} "
+                         f"({r['confidence']:.0%}){region}{ref}")
+        lines.append(f"\nAll results written to:\n{target}")
+        lines.append("Key region: the part of the beat that, when flattened, lowered the predicted class's "
+                     "probability the most (occlusion sensitivity), shaded on the plot.")
+        model = summary["model"]
+        lines.append(f"Model: {model.get('architecture')} v{model.get('version')} from {model.get('round_id')}.")
+        if model.get("trained_on_simulated_data"):
+            lines.append("This hospital's training data for this model was SIMULATED.")
+        lines.append(f"\n{summary['disclaimer']}")
+        self._show(headline, "\n".join(lines), RISK if abnormal else CALM)
+
+    def _draw_beat(self) -> None:
+        if self.ecg_beats is None or not hasattr(self, "canvas"):
+            return
+        from ml.prediction.ecg import NAMES
+
+        try:
+            index = max(1, min(int(self.beat_no.get()), len(self.ecg_beats))) - 1
+        except (tk.TclError, ValueError):
+            return
+        beat = self.ecg_beats[index]
+        result = self.session.ecg_predictor().predict_beats(beat.reshape(1, -1))[0]
+        c = self.canvas
+        c.delete("all")
+        w, h, pad = int(c.winfo_width() or 680), 170, 14
+        w = max(w, 400)
+        lo, hi = float(beat.min()), float(beat.max())
+        span = hi - lo or 1.0
+        xs = [pad + i * (w - 2 * pad) / (len(beat) - 1) for i in range(len(beat))]
+        ys = [h - pad - (v - lo) / span * (h - 2 * pad - 18) for v in beat]
+        e = result["explanation"]
+        if e:
+            c.create_rectangle(xs[e["start_sample"]], 22, xs[min(e["end_sample"], len(beat) - 1)], h - pad,
+                               fill="#f6dccb", outline="")
+        c.create_line(*[v for xy in zip(xs, ys) for v in xy], fill="#1f4e8c", width=2)
+        colour = CALM if result["code"] == "N" else RISK
+        c.create_text(pad, 10, anchor="w", fill=colour, font=("Segoe UI", 10, "bold"),
+                      text=f"Beat {index + 1}: {result['code']} – {NAMES[result['code']]} ({result['confidence']:.0%})")
+        if e:
+            c.create_text(w - pad, 10, anchor="e", fill="#8a5a00", font=("Segoe UI", 9),
+                          text=f"key region {e['start_ms']}–{e['end_ms']} ms")
+
     def clear(self) -> None:
         for variable in self.entries.values():
             variable.set("")
@@ -145,6 +272,9 @@ class PredictWindow:
     def predict(self) -> None:
         modality = self.modality
         if modality is None:
+            return
+        if modality == "ecg":
+            self.open_ecg()
             return
         values = {name: variable.get().strip() or None for name, variable in self.entries.items()}
         folder = self.data_dir()
@@ -197,6 +327,9 @@ class PredictWindow:
     def score_file(self) -> None:
         modality = self.modality
         if modality is None:
+            return
+        if modality == "ecg":
+            self.open_ecg()
             return
         chosen = filedialog.askopenfilename(
             title="Choose a CSV of new patients", filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]

@@ -229,6 +229,29 @@ class AgentSession:
 
         return available_models(self.models_dir)
 
+    def ecg_model_info(self) -> Optional[dict]:
+        """The saved global ECG model's info, or None when there is none on this computer yet."""
+        from ml.prediction.ecg import ecg_model_available
+
+        return ecg_model_available(self.models_dir)
+
+    def ecg_predictor(self):
+        """A heartbeat labeller for the saved global ECG model. Runs on this machine only."""
+        from ml.prediction.ecg import ECGPredictor, load_ecg_model
+        from ml.prediction.local import PredictionUnavailable
+
+        info = self.ecg_model_info() or {}
+        key = ("ecg", info.get("sha256"))
+        cached = getattr(self, "_ecg_predictor", None)
+        if cached is not None and cached[0] == key:
+            return cached[1]
+        try:
+            predictor = ECGPredictor(load_ecg_model(self.models_dir))
+        except PredictionUnavailable as exc:
+            raise AgentError(str(exc)) from exc
+        self._ecg_predictor = (key, predictor)
+        return predictor
+
     def predictor(self, modality: str, folder: Optional[Path]):
         """A predictor for the saved global model, filling gaps from this hospital's own training records.
 

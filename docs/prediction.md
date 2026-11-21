@@ -188,3 +188,25 @@ Code: `ml/common/column_mapping.py`, tested in `ml/tests/test_column_mapping.py`
   population.
 - **No clinical validation.** PIMA is one small public dataset of adult women of Pima heritage. A model trained
   on it says nothing about other populations.
+
+
+## ECG heartbeats
+
+**Predict** in the agent also labels heartbeats with the global ECG model (CNN-BiLSTM) that the hospital kept
+from its last ECG round. Choose **ECG heartbeat class** in the model list, then **Open heartbeat file…**.
+
+- **Input.** One heartbeat per row, 187 samples at 125 Hz: the MIT-BIH heartbeat format.
+  - A 188th column with a reference label (0 = N, 1 = S, 2 = V, 3 = F, 4 = Q) is allowed, as in the Kaggle
+    `mitbih_test.csv` export. The agent then also reports how often the model agreed with it. Q beats are outside
+    the model's four classes and are not counted.
+  - CSV, NPY, or the platform's own NPZ (`signals`, `labels`) are accepted, so `data/hospitals/hospital_a/ecg/val.npz`
+    works as a quick demo file. Those beats are SIMULATED.
+- **Output.** Every beat is labelled N (normal), S (supraventricular ectopic), V (ventricular ectopic) or F (fusion),
+  with the probability of each class. The results go to `<file>_ecg_predictions.csv` next to the input.
+- **Key region.** For each beat (up to 300 per file), the agent flattens 20-sample windows one at a time and finds
+  the window whose removal lowers the predicted class's probability the most (occlusion sensitivity). The window is
+  shaded on the beat plot and reported in milliseconds.
+- **Privacy.** The beats, labels and explanations stay on the hospital's computer. Nothing is sent.
+- **Limits.** The platform's ECG model is trained on beat shape only (no RR intervals). On real MIT-BIH data with
+  unseen patients its macro-F1 was 0.409, so S and F beats in particular are often missed. Treat every label as a
+  research output, not a diagnosis. Code: `ml/prediction/ecg.py`; tests: `ml/tests/test_ecg_prediction.py`.
