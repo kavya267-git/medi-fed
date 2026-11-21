@@ -32,6 +32,8 @@ import json
 import sys
 from pathlib import Path
 
+import numpy as np
+
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
@@ -40,6 +42,7 @@ from ml.common.real_data import (  # noqa: E402
     prepare_chestxray14,
     prepare_diabetes_csv,
     prepare_ecg_heartbeat_csv,
+    prepare_mitdb_records,
     prepare_ehr_csv,
     prepare_pima,
 )
@@ -73,7 +76,13 @@ def main() -> None:
     )
 
     ecg = sub.add_parser("ecg")
-    ecg.add_argument("--csv", type=Path, nargs="+", required=True)
+    ecg_source = ecg.add_mutually_exclusive_group(required=True)
+    ecg_source.add_argument("--csv", type=Path, nargs="+", help="Kaggle MIT-BIH heartbeat export (no RR intervals)")
+    ecg_source.add_argument(
+        "--mitdb",
+        type=Path,
+        help="Folder with the PhysioNet MIT-BIH Arrhythmia Database records (.dat/.hea/.atr); beats get RR intervals",
+    )
     ecg.add_argument("--source", default="mit-bih")
 
     xray = sub.add_parser("xray")
@@ -119,6 +128,14 @@ def main() -> None:
             keep_missing=args.keep_missing,
             **common,
         )
+    elif args.modality == "ecg" and args.mitdb:
+        from experiments.mitdb import DS1, DS2, record_beats_with_rr
+
+        records = {}
+        for record in DS1 + DS2:  # the 44 non-paced records
+            X, y, _, rr = record_beats_with_rr(args.mitdb, record)
+            records[record] = (np.concatenate([X, rr], axis=1), y)
+        manifests = prepare_mitdb_records(records, source="mitdb", **common)
     elif args.modality == "ecg":
         manifests = prepare_ecg_heartbeat_csv(args.csv, source=args.source, **common)
     elif args.modality == "diabetes" and args.pima:

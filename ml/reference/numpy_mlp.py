@@ -21,7 +21,7 @@ from ml.common.adapter import ModelAdapter
 from ml.common.tasks import get_task
 from ml.common.types import ArrayDataset, TrainConfig, TrainResult, Weights
 from ml.diabetes.features import NUM_DIABETES_FEATURES, standardize_diabetes
-from ml.ecg.preprocess import ECG_BEAT_LENGTH, prepare_ecg
+from ml.ecg.preprocess import ECG_INPUT_LENGTH, prepare_ecg_input
 from ml.ehr.features import NUM_EHR_FEATURES, standardize_ehr
 from ml.xray.preprocess import block_downsample, prepare_xray
 
@@ -149,7 +149,7 @@ def build_reference_adapter(modality: str) -> NumpyMLPAdapter:
     if modality == "ehr":
         return NumpyMLPAdapter("ehr", NUM_EHR_FEATURES, 32, standardize_ehr)
     if modality == "ecg":
-        return NumpyMLPAdapter("ecg", ECG_BEAT_LENGTH, 64, prepare_ecg)
+        return NumpyMLPAdapter("ecg", ECG_INPUT_LENGTH, 64, prepare_ecg_input)
     if modality == "xray":
         return NumpyMLPAdapter("xray", _XRAY_REFERENCE_SIZE * _XRAY_REFERENCE_SIZE, 64, _prepare_xray_flat)
     if modality == "diabetes":

@@ -192,14 +192,16 @@ Code: `ml/common/column_mapping.py`, tested in `ml/tests/test_column_mapping.py`
 
 ## ECG heartbeats
 
-**Predict** in the agent also labels heartbeats with the global ECG model (CNN-BiLSTM) that the hospital kept
+**Predict** in the agent also labels heartbeats with the global ECG model (CNN-BiLSTM+RR) that the hospital kept
 from its last ECG round. Choose **ECG heartbeat class** in the model list, then **Open heartbeat file…**.
 
-- **Input.** One heartbeat per row, 187 samples at 125 Hz: the MIT-BIH heartbeat format.
+- **Input.** One heartbeat per row, 187 samples at 125 Hz (the MIT-BIH heartbeat format), optionally followed by
+  the beat's pre-RR, post-RR and local average RR, each divided by the patient's average RR (190 columns).
+  Without them a regular rhythm (1.0) is assumed, and early S and V beats are missed more often.
   - A 188th column with a reference label (0 = N, 1 = S, 2 = V, 3 = F, 4 = Q) is allowed, as in the Kaggle
     `mitbih_test.csv` export. The agent then also reports how often the model agreed with it. Q beats are outside
     the model's four classes and are not counted.
-  - CSV, NPY, or the platform's own NPZ (`signals`, `labels`) are accepted, so `data/hospitals/hospital_a/ecg/val.npz`
+  - CSV, NPY, or the platform's own NPZ (`signals`, `rr`, `labels`) are accepted, so `data/hospitals/hospital_a/ecg/val.npz`
     works as a quick demo file. Those beats are SIMULATED.
 - **Output.** Every beat is labelled N (normal), S (supraventricular ectopic), V (ventricular ectopic) or F (fusion),
   with the probability of each class. The results go to `<file>_ecg_predictions.csv` next to the input.
@@ -207,6 +209,28 @@ from its last ECG round. Choose **ECG heartbeat class** in the model list, then 
   the window whose removal lowers the predicted class's probability the most (occlusion sensitivity). The window is
   shaded on the beat plot and reported in milliseconds.
 - **Privacy.** The beats, labels and explanations stay on the hospital's computer. Nothing is sent.
-- **Limits.** The platform's ECG model is trained on beat shape only (no RR intervals). On real MIT-BIH data with
-  unseen patients its macro-F1 was 0.409, so S and F beats in particular are often missed. Treat every label as a
+- **Rhythm effect.** For each explained beat the agent also reports how much the predicted class's probability
+  drops when the RR inputs are replaced by a regular rhythm: a large drop means the timing, not the shape, drove
+  the label.
+- **Limits.** On real MIT-BIH data with unseen patients, this model (FedAvg with RR inputs, experiment 1f) reached
+  macro-F1 0.477, against 0.409 for beat shape alone; S and F beats are still often missed. Treat every label as a
   research output, not a diagnosis. Code: `ml/prediction/ecg.py`; tests: `ml/tests/test_ecg_prediction.py`.
+
+## RR intervals in the ECG model (agent 1.3.0)
+
+The platform's ECG model is now **CNN-BiLSTM+RR**: the beat-shape network of experiments 1a–1e, with each beat's
+pre-RR, post-RR and local average RR (relative to the patient's mean RR) joining the pooled features before the
+classifier. Experiment 1f measured the gain on real MIT-BIH records with unseen patients: macro-F1 0.409 → 0.477.
+
+- **Data files.** `ecg/train.npz` and `val.npz` may hold an `rr` array ([n, 3]) next to `signals` and `labels`.
+  - `scripts/prepare_real_data.py ecg --mitdb <folder>` builds them from the PhysioNet MIT-BIH Arrhythmia Database
+    records (44 non-paced records, one patient each), with RR intervals. Each patient stays in one hospital and one split.
+  - The Kaggle heartbeat export (`--csv`) has no RR intervals; its beats are read as a regular rhythm, and the
+    dataset description says so.
+  - Simulated hospitals get SIMULATED RR intervals: S and V beats come early, and V beats are followed by a
+    compensatory pause.
+- **Compatibility.** The new model has a different architecture signature, so the coordinator starts a new ECG
+  model line and never averages it with old CNN-BiLSTM weights. Hospitals need agent 1.3.0 or later to train it.
+- **Code.** `ml/ecg/preprocess.py` (`ecg_input`, `prepare_ecg_input`), `ml/ecg/cnn_bilstm.py`
+  (`CNNBiLSTMRRAdapter`), `ml/simulation/ecg.py` (`simulate_rr`), `ml/common/real_data.py`
+  (`prepare_mitdb_records`).

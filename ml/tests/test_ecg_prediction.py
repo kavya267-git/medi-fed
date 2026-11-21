@@ -8,7 +8,7 @@ import pytest
 
 from ml.common.types import TrainConfig
 from ml.common.weights import weights_to_bytes
-from ml.ecg.preprocess import ECG_BEAT_LENGTH
+from ml.ecg.preprocess import ECG_BEAT_LENGTH, ECG_INPUT_LENGTH
 from ml.prediction.ecg import (
     CODES,
     ECGPredictor,
@@ -36,7 +36,8 @@ def setup(tmp_path_factory):
     save_global_model(models_dir, "ecg", weights_to_bytes(weights),
                       {"architecture": adapter.architecture, "model_version": 2, "local_data_simulated": True})
     with np.load(data_dir / "ecg" / "val.npz") as z:
-        beats, labels = z["signals"].astype(np.float32), z["labels"].astype(int)
+        beats = np.concatenate([z["signals"], z["rr"]], axis=1).astype(np.float32)
+        labels = z["labels"].astype(int)
     return models_dir, beats, labels, root
 
 
@@ -59,15 +60,17 @@ def test_labels_beats_with_probabilities_and_explanation(setup):
         e = r["explanation"]
         assert 0 <= e["start_sample"] < e["end_sample"] <= ECG_BEAT_LENGTH
         assert len(e["importance"]) == ECG_BEAT_LENGTH
+        assert set(e["rr"]) == {"pre_rr", "post_rr", "local_rr"} and -1 <= e["rhythm_drop"] <= 1
 
 
 def test_scores_a_kaggle_style_csv_with_reference_labels(setup, tmp_path):
     models_dir, beats, labels, _ = setup
     path = tmp_path / "beats.csv"
     pd.DataFrame(np.column_stack([beats[:40], labels[:40]])).to_csv(path, header=False, index=False)
-    X, y = read_beats(path)
-    assert X.shape == (40, ECG_BEAT_LENGTH) and list(y) == list(labels[:40])
-    table, summary = ECGPredictor(load_ecg_model(models_dir)).score(X, y)
+    X, y, rr_given = read_beats(path)
+    assert X.shape == (40, ECG_INPUT_LENGTH) and list(y) == list(labels[:40]) and rr_given
+    table, summary = ECGPredictor(load_ecg_model(models_dir)).score(X, y, rr_given)
+    assert {"pre_rr", "post_rr", "local_rr", "rhythm_effect"} <= set(table.columns)
     assert len(table) == 40 and set(table["prediction"]) <= set(CODES)
     assert sum(summary["counts"].values()) == 40
     assert 0 <= summary["agreement"] <= 1 and summary["reference_beats"] == 40
@@ -78,11 +81,16 @@ def test_scores_a_kaggle_style_csv_with_reference_labels(setup, tmp_path):
 def test_reads_beats_without_labels_and_rejects_wrong_shapes(setup, tmp_path):
     _, beats, _, root = setup
     plain = tmp_path / "plain.csv"
-    pd.DataFrame(beats[:3]).to_csv(plain, index=False)  # with a header row
-    X, y = read_beats(plain)
-    assert X.shape == (3, ECG_BEAT_LENGTH) and y is None
-    X, y = read_beats(root / SIMULATED_HOSPITALS[0].hospital_id / "ecg" / "val.npz")
-    assert y is not None and len(X) == len(y)
+    pd.DataFrame(beats[:3, :ECG_BEAT_LENGTH]).to_csv(plain, index=False)  # with a header row
+    X, y, rr_given = read_beats(plain)
+    assert X.shape == (3, ECG_INPUT_LENGTH) and y is None and not rr_given
+    assert np.all(X[:, ECG_BEAT_LENGTH:] == 1.0)  # no RR intervals: regular rhythm
+    kaggle = tmp_path / "kaggle.csv"
+    pd.DataFrame(np.column_stack([beats[:3, :ECG_BEAT_LENGTH], [0, 2, 1]])).to_csv(kaggle, header=False, index=False)
+    X, y, rr_given = read_beats(kaggle)
+    assert X.shape == (3, ECG_INPUT_LENGTH) and list(y) == [0, 2, 1] and not rr_given
+    X, y, rr_given = read_beats(root / SIMULATED_HOSPITALS[0].hospital_id / "ecg" / "val.npz")
+    assert y is not None and len(X) == len(y) and rr_given
     bad = tmp_path / "bad.csv"
     pd.DataFrame(np.zeros((2, 50))).to_csv(bad, header=False, index=False)
     with pytest.raises(ValueError, match="187 samples"):

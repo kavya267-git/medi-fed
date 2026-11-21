@@ -13,7 +13,7 @@ from torch import nn
 
 from ml.common.tasks import ECG_TASK
 from ml.common.torch_adapter import TorchModelAdapter
-from ml.ecg.preprocess import ECG_BEAT_LENGTH, prepare_ecg
+from ml.ecg.preprocess import ECG_BEAT_LENGTH, RR_INPUTS, prepare_ecg, prepare_ecg_input
 
 
 class CNNBiLSTM(nn.Module):
@@ -65,27 +65,28 @@ class CNNBiLSTMAdapter(TorchModelAdapter):
         return CNNBiLSTM(self.task.num_classes)
 
     def to_input(self, X: np.ndarray) -> torch.Tensor:
+        X = np.asarray(X, dtype=np.float32)
+        if X.ndim == 2 and X.shape[1] > ECG_BEAT_LENGTH:
+            X = X[:, :ECG_BEAT_LENGTH]  # rows that carry RR inputs: this beat-shape-only model ignores them
         beats = np.ascontiguousarray(prepare_ecg(X))
         return torch.from_numpy(beats).unsqueeze(1)
 
 
 class CNNBiLSTMRRAdapter(CNNBiLSTMAdapter):
-    """CNN-BiLSTM plus three RR-interval inputs per beat (experiment 1f; not used by the platform).
+    """CNN-BiLSTM plus three RR-interval inputs per beat: the platform's ECG model (first tested in experiment 1f).
 
     Each input row is the 187 beat samples followed by pre-RR, post-RR and local average RR, each relative
     to the record's average RR. The RR values join the mean-pooled BiLSTM output before the final layer.
     """
 
     architecture = "CNN-BiLSTM+RR"
-    rr_inputs = 3
+    rr_inputs = RR_INPUTS
     summary = CNNBiLSTMAdapter.summary + " Three RR-interval inputs join the pooled output before the classifier."
 
     def build_model(self, for_init: bool = False) -> nn.Module:
         return CNNBiLSTM(self.task.num_classes, rr_inputs=self.rr_inputs)
 
     def to_input(self, X: np.ndarray) -> torch.Tensor:
-        X = np.asarray(X, dtype=np.float32)
-        if X.ndim != 2 or X.shape[1] != ECG_BEAT_LENGTH + self.rr_inputs:
-            raise ValueError(f"Input must have shape [n, {ECG_BEAT_LENGTH + self.rr_inputs}], got {X.shape}")
-        rows = np.concatenate([prepare_ecg(X[:, :ECG_BEAT_LENGTH]), X[:, ECG_BEAT_LENGTH:]], axis=1)
+        """Rows of 187 beat samples + 3 RR inputs; beats without RR (187 columns) get a regular rhythm (1.0)."""
+        rows = prepare_ecg_input(X)
         return torch.from_numpy(np.ascontiguousarray(rows)).unsqueeze(1)

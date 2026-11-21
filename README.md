@@ -22,7 +22,7 @@ Hospital D ── local training ──┘    (weights, sample counts, summary m
 | Area | What it does |
 | --- | --- |
 | Federated learning | Round lifecycle (created → waiting → training → receiving updates → aggregating → evaluating → completed / failed), update validation, FedAvg weighted by sample count, federated evaluation, model versioning |
-| Modalities | EHR → TabNet, ECG → CNN-BiLSTM, X-ray → EfficientNet-B3, diabetes (real PIMA records) → small neural network. Separate registries and aggregation; incompatible architectures are never averaged |
+| Modalities | EHR → TabNet, ECG → CNN-BiLSTM with RR-interval inputs (CNN-BiLSTM+RR), X-ray → EfficientNet-B3, diabetes (real PIMA records) → small neural network. Separate registries and aggregation; incompatible architectures are never averaged |
 | Prediction | The hospital agent's **Predict** window uses the global model the hospital kept on a new patient (EHR, diabetes), with the reasons (Shapley values) - on the hospital's computer, nothing sent ([docs/prediction.md](docs/prediction.md)) |
 | Hospitals | Four nodes, each with its own data directory. Run in-process for a demo or as separate processes over HTTP |
 | Surveillance | Regional weekly counts from hospital-reported totals with small-count suppression, choropleth map, hotspot *candidates* (z-score), never "outbreaks" |

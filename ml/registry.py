@@ -4,7 +4,7 @@
 
 * ``auto`` (default) - PyTorch models when PyTorch is importable, otherwise the
   NumPy reference models.
-* ``pytorch`` - TabNet / CNN-BiLSTM / EfficientNet-B3 / diabetes MLP. Fails loudly if PyTorch
+* ``pytorch`` - TabNet / CNN-BiLSTM+RR / EfficientNet-B3 / diabetes MLP. Fails loudly if PyTorch
   (or torchvision for X-ray) is missing.
 * ``numpy-reference`` - the lightweight stand-in models in ``ml.reference``.
 """
@@ -66,9 +66,9 @@ def _build_torch_adapter(modality: str) -> ModelAdapter:
 
         return TabNetAdapter()
     if modality == "ecg":
-        from ml.ecg.cnn_bilstm import CNNBiLSTMAdapter
+        from ml.ecg.cnn_bilstm import CNNBiLSTMRRAdapter
 
-        return CNNBiLSTMAdapter()
+        return CNNBiLSTMRRAdapter()
     if modality == "xray":
         from ml.xray.efficientnet import EfficientNetB3Adapter
 
@@ -116,7 +116,7 @@ def get_adapter(modality: str, backend: str | None = None) -> ModelAdapter:
 #: Target architecture per modality, independent of which backend is active.
 TARGET_ARCHITECTURES: Dict[str, str] = {
     "ehr": "TabNet",
-    "ecg": "CNN-BiLSTM",
+    "ecg": "CNN-BiLSTM+RR",
     "xray": "EfficientNet-B3",
     "diabetes": "MLP",
 }

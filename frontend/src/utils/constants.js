@@ -2,7 +2,7 @@
 
 export const MODALITIES = {
   ehr: { id: 'ehr', label: 'EHR', name: 'Electronic health records', target: 'TabNet', color: '#a3b0ff', soft: 'bg-ehr-soft text-ehr' },
-  ecg: { id: 'ecg', label: 'ECG', name: 'Electrocardiogram', target: 'CNN-BiLSTM', color: '#ff9bb9', soft: 'bg-ecg-soft text-ecg' },
+  ecg: { id: 'ecg', label: 'ECG', name: 'Electrocardiogram', target: 'CNN-BiLSTM+RR', color: '#ff9bb9', soft: 'bg-ecg-soft text-ecg' },
   xray: { id: 'xray', label: 'X-ray', name: 'Chest X-ray', target: 'EfficientNet-B3', color: '#7fd6f0', soft: 'bg-xray-soft text-xray' },
   diabetes: { id: 'diabetes', label: 'Diabetes', name: 'Diabetes screening', target: 'MLP', color: '#c9b2ff', soft: 'bg-diabetes-soft text-diabetes' },
 }

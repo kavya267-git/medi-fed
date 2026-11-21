@@ -305,7 +305,7 @@ def test_models_before_training(client, viewer):
     for model in models:
         assert model["current_version"] == 0 and model["training_status"] == "NOT_TRAINED"
         assert model["latest_metrics"] is None  # no invented numbers before a round has run
-    assert [m["target_architecture"] for m in models] == ["TabNet", "CNN-BiLSTM", "EfficientNet-B3", "MLP"]
+    assert [m["target_architecture"] for m in models] == ["TabNet", "CNN-BiLSTM+RR", "EfficientNet-B3", "MLP"]
     metrics = client.get("/api/models/ecg/metrics", headers=viewer).json()
     assert metrics["series"] == [] and metrics["latest"] is None
     assert client.get("/api/models/mri", headers=viewer).status_code == 404

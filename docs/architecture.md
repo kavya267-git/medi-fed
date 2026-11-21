@@ -113,7 +113,7 @@ stand-ins), the registry starts a fresh untrained version rather than loading in
 
 | `ML_BACKEND` | EHR | ECG | X-ray |
 | --- | --- | --- | --- |
-| `pytorch` (or `auto` with PyTorch installed) | TabNet | CNN-BiLSTM | EfficientNet-B3 |
+| `pytorch` (or `auto` with PyTorch installed) | TabNet | CNN-BiLSTM+RR | EfficientNet-B3 |
 | `numpy-reference` (or `auto` without PyTorch) | NumPy MLP | NumPy MLP | NumPy MLP |
 
 The stand-ins exist so the whole workflow runs on a machine without PyTorch. They are real models trained

@@ -5,6 +5,10 @@ R, S and T waves, with class-dependent changes that mimic textbook morphology
 (early beat with abnormal P for supraventricular ectopy; wide QRS, no P and an
 inverted T for ventricular ectopy; a blend of normal and ventricular for
 fusion). These are cartoons of real rhythms, not recordings.
+
+``simulate_rr`` adds each beat's RR-interval inputs (pre-RR, post-RR and local average RR, relative to the
+record's average): ectopic S and V beats come early (short pre-RR), V beats are usually followed by a
+compensatory pause (long post-RR). Also SIMULATED.
 """
 
 from __future__ import annotations
@@ -76,3 +80,26 @@ def simulate_ecg(n: int, rng: np.random.Generator, profile: ECGProfile = ECGProf
         noise = rng.normal(0, profile.noise, ECG_BEAT_LENGTH)
         signals[index] = (profile.gain * beat + wander + noise).astype(np.float32)
     return signals, labels
+
+
+def simulate_rr(labels: np.ndarray, rng: np.random.Generator) -> np.ndarray:
+    """SIMULATED [n, 3] pre-RR, post-RR and local average RR for beats of the given classes."""
+    labels = np.asarray(labels)
+    n = len(labels)
+    pre = rng.normal(1.0, 0.06, n)
+    post = rng.normal(1.0, 0.06, n)
+    local = rng.normal(1.0, 0.04, n)
+    s, v, f = labels == 1, labels == 2, labels == 3
+    pre[s] = rng.uniform(0.55, 0.85, s.sum())
+    post[s] = rng.uniform(1.0, 1.3, s.sum())
+    pre[v] = rng.uniform(0.5, 0.85, v.sum())
+    post[v] = rng.uniform(1.15, 1.6, v.sum())
+    pre[f] = rng.normal(0.93, 0.07, f.sum())
+    post[f] = rng.normal(1.05, 0.07, f.sum())
+    return np.clip(np.stack([pre, post, local], axis=1), 0.3, 2.5).astype(np.float32)
+
+
+def simulate_ecg_with_rr(n: int, rng: np.random.Generator, profile: ECGProfile = ECGProfile()):
+    """SIMULATED model rows [n, 190]: beats followed by their RR inputs, and the labels."""
+    signals, labels = simulate_ecg(n, rng, profile)
+    return np.concatenate([signals, simulate_rr(labels, rng)], axis=1), labels

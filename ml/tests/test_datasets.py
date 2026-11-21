@@ -40,7 +40,7 @@ def test_loaded_shapes_and_label_ranges(data_root):
     assert ehr.X.shape[1] == NUM_EHR_FEATURES and ehr.feature_names == EHR_FEATURE_NAMES
     assert set(np.unique(ehr.y)) <= {0, 1} and ehr.is_simulated
     ecg = load_local_dataset(directory, "ecg", "train")
-    assert ecg.X.shape[1] == 187 and set(np.unique(ecg.y)) <= {0, 1, 2, 3}
+    assert ecg.X.shape[1] == 190 and set(np.unique(ecg.y)) <= {0, 1, 2, 3}  # 187 samples + 3 RR inputs
     xray = load_local_dataset(directory, "xray", "val")
     assert xray.X.shape[1:] == (64, 64) and xray.X.dtype == np.uint8
     assert len(xray) == len(xray.y)
@@ -111,5 +111,5 @@ def test_reference_cases_are_separate_from_hospital_data(data_root):
     hospital = load_local_dataset(data_root / "hospital_a", "ehr", "train").X
     for row in cases["X"]:
         assert not (hospital == row).all(axis=1).any()
-    assert generate_reference_cases("ecg")["X"].shape == (4, 187)
+    assert generate_reference_cases("ecg")["X"].shape == (4, 190)  # beats + simulated RR
     assert generate_reference_cases("xray")["X"].shape == (4, 64, 64)

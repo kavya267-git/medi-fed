@@ -22,7 +22,7 @@ import numpy as np
 from ml.common.datasets import DatasetUnavailableError, load_local_dataset
 from ml.common.tabular import input_coverage, is_tabular, tabular_schema
 from ml.diabetes.features import DIABETES_BOUNDS
-from ml.ecg.preprocess import ECG_BEAT_LENGTH
+from ml.ecg.preprocess import ECG_BEAT_LENGTH, ECG_INPUT_LENGTH, RR_RANGE
 
 #: Fewer training records than this cannot train (batch normalisation needs batches of 2+).
 MIN_TRAIN_RECORDS = 8
@@ -89,10 +89,16 @@ def _check_values(modality: str, X: np.ndarray, split: str, problems: List[str])
             if outside:
                 problems.append(f"{split}: {outside} value(s) of '{name}' outside {low}-{high}; check the units")
     elif modality == "ecg":
-        if X.ndim != 2 or X.shape[1] != ECG_BEAT_LENGTH:
+        if X.ndim != 2 or X.shape[1] not in (ECG_BEAT_LENGTH, ECG_INPUT_LENGTH):
             problems.append(f"{split}: each beat must have {ECG_BEAT_LENGTH} samples (125 Hz); got shape {X.shape}")
         elif not np.all(np.isfinite(X)):
-            problems.append(f"{split}: beats contain NaN or infinite samples")
+            problems.append(f"{split}: beats or RR intervals contain NaN or infinite values")
+        elif X.shape[1] == ECG_INPUT_LENGTH:
+            rr = X[:, ECG_BEAT_LENGTH:]
+            outside = int(np.sum((rr < RR_RANGE[0]) | (rr > RR_RANGE[1])))
+            if outside:
+                problems.append(f"{split}: {outside} RR value(s) outside {RR_RANGE[0]}-{RR_RANGE[1]} "
+                                "(they must be relative to the record's average RR)")
     else:
         if X.ndim != 3:
             problems.append(f"{split}: images must have shape [n, height, width]; got {X.shape}")

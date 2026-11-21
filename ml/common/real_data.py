@@ -219,6 +219,43 @@ def prepare_ecg_heartbeat_csv(
     )
 
 
+def prepare_mitdb_records(
+    records: Dict[int, tuple],
+    data_root: Path,
+    hospital_ids: Sequence[str] = DEFAULT_HOSPITALS,
+    source: str = "mitdb",
+    seed: int = 0,
+    alpha: Optional[float] = 1.0,
+    val_fraction: float = 0.25,
+) -> Dict[str, dict]:
+    """Partition beats taken from the MIT-BIH Arrhythmia Database records, with their RR intervals.
+
+    ``records`` maps a record number to ``(rows [n, 190], labels [n])``: each row is a 187-sample beat followed by
+    pre-RR, post-RR and local RR (``experiments.mitdb.record_beats_with_rr``). Every record is one patient, and all
+    of a patient's beats go to the same hospital and the same split, so held-out patients are truly unseen.
+    """
+    numbers = sorted(records)
+    X = np.concatenate([np.asarray(records[r][0], dtype=np.float32) for r in numbers])
+    y = np.concatenate([np.asarray(records[r][1], dtype=np.int64) for r in numbers])
+    groups = np.concatenate([np.full(len(records[r][1]), r) for r in numbers])
+    if X.shape[1] != ECG_BEAT_LENGTH + 3:
+        raise ValueError(f"Expected rows of {ECG_BEAT_LENGTH} samples + 3 RR inputs, got {X.shape[1]} columns")
+    return _write_partitions(
+        data_root,
+        "ecg",
+        X,
+        y,
+        groups,
+        hospital_ids,
+        source,
+        f"MIT-BIH Arrhythmia Database, {len(numbers)} records (one patient each), beats with RR intervals; "
+        "patients are split between hospitals and between training and held-out data.",
+        seed,
+        alpha,
+        val_fraction,
+    )
+
+
 def prepare_chestxray14(
     entries_csv: Path,
     image_dir: Path,

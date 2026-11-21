@@ -17,7 +17,7 @@ import numpy as np
 from ml.common.datasets import read_manifest, save_local_dataset
 from ml.common.types import MODALITIES
 from ml.simulation.diabetes import DiabetesProfile, simulate_diabetes
-from ml.simulation.ecg import ECGProfile, simulate_ecg
+from ml.simulation.ecg import ECGProfile, simulate_ecg_with_rr
 from ml.simulation.ehr import EHRProfile, simulate_ehr
 from ml.simulation.xray import XrayProfile, simulate_xray
 
@@ -81,7 +81,7 @@ SIMULATED_HOSPITALS: List[SimulatedHospital] = [
 
 _DESCRIPTIONS = {
     "ehr": "Simulated structured admissions (14 features, binary outcome). Not real patient data.",
-    "ecg": "Simulated single-beat ECG windows (187 samples, 4 AAMI-style classes). Not real recordings.",
+    "ecg": "Simulated single-beat ECG windows (187 samples, 4 AAMI-style classes) with simulated RR intervals. Not real recordings.",
     "xray": "Simulated 64x64 chest phantoms (finding / no finding). Not real radiographs.",
     "diabetes": "Simulated diabetes screening records (8 PIMA-style measurements, diabetes yes / no). Not real patients.",
 }
@@ -110,7 +110,7 @@ def _simulate(hospital: SimulatedHospital, modality: str, n: int, rng: np.random
     if modality == "ehr":
         return simulate_ehr(n, rng, hospital.ehr)
     if modality == "ecg":
-        return simulate_ecg(n, rng, hospital.ecg)
+        return simulate_ecg_with_rr(n, rng, hospital.ecg)
     if modality == "diabetes":
         return simulate_diabetes(n, rng, hospital.diabetes)
     return simulate_xray(n, rng, hospital.xray)
@@ -172,7 +172,7 @@ def generate_reference_cases(modality: str, seed: int = 7) -> dict:
         rest = [i for i in range(len(y)) if i not in set(cases)]
         return {"X": X[cases], "y": y[cases], "background": X[rest][:64]}
     if modality == "ecg":
-        X, y = simulate_ecg(120, rng, ECGProfile(class_mix=(0.25, 0.25, 0.25, 0.25)))
+        X, y = simulate_ecg_with_rr(120, rng, ECGProfile(class_mix=(0.25, 0.25, 0.25, 0.25)))
         cases = [int(np.where(y == label)[0][0]) for label in range(4)]
         return {"X": X[cases], "y": y[cases], "background": X[:0]}
     X, y = simulate_xray(40, rng, XrayProfile(prevalence=0.5))

@@ -170,8 +170,9 @@ def test_label_heartbeats_with_the_saved_global_ecg_model(agent_home, tmp_path, 
     assert session.ecg_model_info()["model_version"] == 1
     predictor = session.ecg_predictor()
     assert session.ecg_predictor() is predictor
-    beats, labels = read_beats(folder / "ecg" / "val.npz")
-    table, summary = predictor.score(beats[:20], labels[:20])
+    beats, labels, rr_given = read_beats(folder / "ecg" / "val.npz")
+    assert rr_given
+    table, summary = predictor.score(beats[:20], labels[:20], rr_given)
     assert len(table) == 20 and set(table["prediction"]) <= set(CODES)
     assert summary["beats"] == 20 and "agreement" in summary
     assert np.isfinite(table["confidence"]).all()

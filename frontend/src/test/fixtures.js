@@ -13,7 +13,7 @@ export const systemConfig = {
   pytorch_available: true,
   model_backends: {
     ehr: { architecture: 'TabNet', backend: 'pytorch', target_architecture: 'TabNet', is_target_architecture: true },
-    ecg: { architecture: 'CNN-BiLSTM', backend: 'pytorch', target_architecture: 'CNN-BiLSTM', is_target_architecture: true },
+    ecg: { architecture: 'CNN-BiLSTM+RR', backend: 'pytorch', target_architecture: 'CNN-BiLSTM+RR', is_target_architecture: true },
     xray: { architecture: 'EfficientNet-B3', backend: 'pytorch', target_architecture: 'EfficientNet-B3', is_target_architecture: true },
   },
   modalities: ['ehr', 'ecg', 'xray'],
@@ -116,7 +116,7 @@ export const emptyOverview = {
     fl_rounds_failed: 0,
     models_trained: 0,
   },
-  models: [untrainedModel('ehr', 'TabNet'), untrainedModel('ecg', 'CNN-BiLSTM'), untrainedModel('xray', 'EfficientNet-B3')],
+  models: [untrainedModel('ehr', 'TabNet'), untrainedModel('ecg', 'CNN-BiLSTM+RR'), untrainedModel('xray', 'EfficientNet-B3')],
   active_rounds: [],
   recent_rounds: [],
   hospitals: hospitals.map((h) => ({ ...h })),
@@ -136,7 +136,7 @@ export const trainedOverview = {
       training_status: 'TRAINED',
       metrics: { accuracy: 0.85, precision: 0.6, recall: 0.4, f1: 0.482, loss: 0.35 },
     },
-    untrainedModel('ecg', 'CNN-BiLSTM'),
+    untrainedModel('ecg', 'CNN-BiLSTM+RR'),
     untrainedModel('xray', 'EfficientNet-B3'),
   ],
 }

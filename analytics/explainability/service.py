@@ -90,11 +90,27 @@ def explain_ehr_record(
 
 
 def explain_ecg_beat(adapter, weights, signal: np.ndarray, sample_rate_hz: int) -> dict:
+    from ml.ecg.preprocess import ECG_BEAT_LENGTH, RR_FEATURES, RR_NEUTRAL
+
+    row = np.asarray(signal, dtype=np.float32).reshape(-1)
+    beat, rr = row[:ECG_BEAT_LENGTH], row[ECG_BEAT_LENGTH:]
+
     def predict(data: np.ndarray) -> np.ndarray:
+        data = np.asarray(data, dtype=np.float32).reshape(len(data), -1)
+        if len(rr):  # occlusion hides stretches of the beat; the RR inputs stay as they are
+            data = np.concatenate([data, np.repeat(rr[None], len(data), axis=0)], axis=1)
         return adapter.predict_proba(weights, data)
 
-    probabilities = predict(np.asarray(signal, dtype=np.float32)[None])[0]
+    probabilities = predict(beat[None])[0]
     target = int(np.argmax(probabilities))
+    rhythm = None
+    if len(rr):
+        regular = np.concatenate([beat, np.full(len(rr), RR_NEUTRAL, np.float32)])[None]
+        rhythm = {
+            "rr": {name: round(float(v), 3) for name, v in zip(RR_FEATURES, rr)},
+            "probability_drop_if_regular": round(float(probabilities[target] - adapter.predict_proba(weights, regular)[0][target]), 4),
+        }
+    signal = beat
     result = occlusion.occlusion_signal(predict, signal, target)
     importance = result["importance"]
 
@@ -119,6 +135,7 @@ def explain_ecg_beat(adapter, weights, signal: np.ndarray, sample_rate_hz: int) 
             "end_ms": round(1000.0 * end / sample_rate_hz),
             "mean_importance": float(importance[start:end].mean()) if end > start else 0.0,
         },
+        "rhythm": rhythm,
         "metadata": {
             "window_samples": window,
             "stride_samples": result["stride"],

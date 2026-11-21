@@ -1,7 +1,9 @@
 """Using the global ECG model on new heartbeats, inside the hospital.
 
-A hospital loads a file of single-beat ECG windows (187 samples at 125 Hz, the MIT-BIH heartbeat format) and the
-global CNN-BiLSTM saved after the last round labels every beat as N, S, V or F. Each beat also gets a simple,
+A hospital loads a file of single-beat ECG windows (187 samples at 125 Hz, the MIT-BIH heartbeat format), each
+optionally followed by its three RR-interval inputs, and the global CNN-BiLSTM+RR saved after the last round labels
+every beat as N, S, V or F. Beats without RR intervals are read as a regular rhythm (1.0), which costs accuracy on
+early (S, V) beats. Each beat also gets a simple,
 model-agnostic explanation: the part of the beat that, when flattened, lowers the predicted class's probability
 the most (occlusion sensitivity). Everything runs on the hospital's own computer; the beats and the results are
 never sent anywhere.
@@ -21,7 +23,16 @@ import numpy as np
 import pandas as pd
 
 from ml.common.weights import weights_from_bytes
-from ml.ecg.preprocess import ECG_BEAT_LENGTH, ECG_SAMPLE_RATE_HZ, prepare_ecg
+from ml.ecg.preprocess import (
+    ECG_BEAT_LENGTH,
+    ECG_INPUT_LENGTH,
+    ECG_SAMPLE_RATE_HZ,
+    RR_FEATURES,
+    RR_INPUTS,
+    RR_NEUTRAL,
+    ecg_input,
+    prepare_ecg_input,
+)
 from ml.prediction.local import DISCLAIMER, PredictionUnavailable, model_files
 from ml.registry import get_adapter
 
@@ -85,21 +96,23 @@ def load_ecg_model(models_dir: Path, backend: Optional[str] = None) -> ECGModel:
 
 # ---------------------------------------------------------------------------------------------------- input
 def read_beats(path: Path) -> tuple:
-    """Beats (and any reference labels) from a file.
+    """Model rows, any reference labels, and whether RR intervals were given.
 
-    Accepted: a CSV or NPY with one beat per row of 187 samples, optionally followed by a 188th column holding a
-    reference label (the Kaggle MIT-BIH export: 0=N, 1=S, 2=V, 3=F, 4=Q), or an NPZ with ``signals`` (and
-    optionally ``labels``) as the platform writes them. Returns ``(beats [n, 187] float32, labels or None)``.
+    One beat per row. Accepted column counts: 187 (samples), 188 (samples + reference label, the Kaggle MIT-BIH
+    export: 0=N, 1=S, 2=V, 3=F, 4=Q), 190 (samples + pre-RR, post-RR, local RR, each relative to the record's average
+    RR) and 191 (samples + RR + label). Also NPY, or an NPZ with ``signals`` and optional ``rr`` and ``labels`` as the
+    platform writes them. Returns ``(rows [n, 190] float32, labels or None, rr_given)``.
     """
     path = Path(path)
     suffix = path.suffix.lower()
-    labels = None
+    labels, rr = None, None
     if suffix == ".npz":
         with np.load(path) as z:
             if "signals" not in z:
                 raise ValueError(f"{path.name} has no 'signals' array")
-            X = np.asarray(z["signals"], dtype=np.float32)
+            X = np.asarray(z["signals"], dtype=np.float64)
             labels = np.asarray(z["labels"]).astype(int) if "labels" in z else None
+            rr = np.asarray(z["rr"], dtype=np.float64) if "rr" in z else None
     else:
         if suffix == ".npy":
             X = np.load(path)
@@ -111,18 +124,22 @@ def read_beats(path: Path) -> tuple:
         X = np.asarray(X, dtype=np.float64)
         if X.ndim == 1:
             X = X.reshape(1, -1)
-        if X.shape[1] == ECG_BEAT_LENGTH + 1:
+        if X.shape[1] in (ECG_BEAT_LENGTH + 1, ECG_INPUT_LENGTH + 1):
             labels = X[:, -1].astype(int)
+            X = X[:, :-1]
+        if X.shape[1] == ECG_INPUT_LENGTH:
+            rr = X[:, ECG_BEAT_LENGTH:]
             X = X[:, :ECG_BEAT_LENGTH]
     if X.ndim != 2 or X.shape[1] != ECG_BEAT_LENGTH:
         raise ValueError(
-            f"Each row must be one heartbeat of {ECG_BEAT_LENGTH} samples at {ECG_SAMPLE_RATE_HZ} Hz "
-            f"(optionally plus a label column); this file has {X.shape[1] if X.ndim == 2 else '?'} columns."
+            f"Each row must be one heartbeat of {ECG_BEAT_LENGTH} samples at {ECG_SAMPLE_RATE_HZ} Hz, optionally "
+            f"followed by {RR_INPUTS} RR values and/or a label column (187, 188, 190 or 191 columns); this file has "
+            f"{X.shape[1] if X.ndim == 2 else '?'} columns."
         )
-    if np.isnan(X).any():
-        bad = int(np.isnan(X).any(axis=1).sum())
-        raise ValueError(f"{bad} beat(s) contain empty or non-numeric samples; fix or remove those rows.")
-    return prepare_ecg(X), labels
+    if np.isnan(X).any() or (rr is not None and np.isnan(rr).any()):
+        bad = int((np.isnan(X).any(axis=1) | (np.isnan(rr).any(axis=1) if rr is not None else False)).sum())
+        raise ValueError(f"{bad} beat(s) contain empty or non-numeric values; fix or remove those rows.")
+    return ecg_input(X, rr), labels, rr is not None
 
 
 def _column_numbers(row) -> bool:
@@ -149,23 +166,25 @@ class ECGPredictor:
         self.model = model
 
     def probabilities(self, beats: np.ndarray) -> np.ndarray:
-        X = prepare_ecg(beats)
+        X = prepare_ecg_input(beats)
         out = []
         for start in range(0, len(X), 512):
             out.append(np.asarray(self.model.adapter.predict_proba(self.model.weights, X[start : start + 512])))
         return np.vstack(out) if out else np.zeros((0, len(CODES)))
 
-    def explain(self, beat: np.ndarray, cls: int) -> dict:
-        """Occlusion sensitivity: flatten a sliding window to the beat's median and see how much the predicted
-        class's probability drops. Returns the most influential window in samples and milliseconds."""
-        beat = prepare_ecg(beat.reshape(1, -1))[0]
+    def explain(self, row: np.ndarray, cls: int) -> dict:
+        """Occlusion sensitivity on the beat: flatten a sliding window to the beat's median and see how much the
+        predicted class's probability drops. Also how much it drops when the RR inputs are set to a regular rhythm."""
+        row = prepare_ecg_input(np.asarray(row).reshape(1, -1))[0]
+        beat = row[:ECG_BEAT_LENGTH]
         base = float(np.median(beat))
         starts = list(range(0, ECG_BEAT_LENGTH - OCCLUDE_WIDTH + 1, OCCLUDE_STEP))
-        variants = np.repeat(beat.reshape(1, -1), len(starts) + 1, axis=0)
+        variants = np.repeat(row.reshape(1, -1), len(starts) + 2, axis=0)
         for k, s in enumerate(starts, start=1):
             variants[k, s : s + OCCLUDE_WIDTH] = base
+        variants[-1, ECG_BEAT_LENGTH:] = RR_NEUTRAL
         p = self.probabilities(variants)[:, cls]
-        drops = p[0] - p[1:]
+        drops = p[0] - p[1:-1]
         best = int(np.argmax(drops))
         s = starts[best]
         importance = np.zeros(ECG_BEAT_LENGTH)
@@ -178,8 +197,11 @@ class ECGPredictor:
             "start_ms": round(s * ms),
             "end_ms": round((s + OCCLUDE_WIDTH) * ms),
             "probability_drop": round(float(drops[best]), 4),
+            "rhythm_drop": round(float(p[0] - p[-1]), 4),
+            "rr": {name: round(float(v), 3) for name, v in zip(RR_FEATURES, row[ECG_BEAT_LENGTH:])},
             "importance": importance.round(4).tolist(),
-            "method": f"occlusion sensitivity ({OCCLUDE_WIDTH}-sample windows flattened to the beat's median)",
+            "method": f"occlusion sensitivity ({OCCLUDE_WIDTH}-sample windows flattened to the beat's median); "
+            "rhythm effect = drop when the RR inputs are set to a regular rhythm",
         }
 
     def predict_beats(self, beats: np.ndarray, explain: bool = True) -> List[dict]:
@@ -199,7 +221,7 @@ class ECGPredictor:
             results.append(item)
         return results
 
-    def score(self, beats: np.ndarray, labels: Optional[np.ndarray] = None) -> tuple:
+    def score(self, beats: np.ndarray, labels: Optional[np.ndarray] = None, rr_given: bool = True) -> tuple:
         """Label every beat. Returns ``(table, summary)``; the table has one row per beat, ready to save as CSV."""
         results = self.predict_beats(beats)
         rows = []
@@ -211,14 +233,20 @@ class ECGPredictor:
                 "confidence": round(r["confidence"], 4),
                 **{f"p_{c}": round(v, 4) for c, v in r["probabilities"].items()},
                 "key_region_ms": (f"{r['explanation']['start_ms']}-{r['explanation']['end_ms']}" if r["explanation"] else ""),
+                "rhythm_effect": (r["explanation"]["rhythm_drop"] if r["explanation"] else ""),
             }
             rows.append(row)
         table = pd.DataFrame(rows)
+        if rr_given:
+            X = prepare_ecg_input(beats)
+            for k, name in enumerate(RR_FEATURES):
+                table[name] = X[:, ECG_BEAT_LENGTH + k].round(3)
         counts = table["prediction"].value_counts().reindex(CODES, fill_value=0).to_dict()
         summary = {
             "beats": len(table),
             "counts": {c: int(n) for c, n in counts.items()},
             "abnormal": int(len(table) - counts["N"]),
+            "rr_given": bool(rr_given),
             "model": {
                 "architecture": self.model.info.get("architecture"),
                 "version": self.model.info.get("model_version"),

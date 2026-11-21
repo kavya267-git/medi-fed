@@ -25,6 +25,7 @@ import numpy as np
 import pandas as pd
 
 from ml.common.tabular import is_tabular, tabular_schema
+from ml.ecg.preprocess import ECG_BEAT_LENGTH, ECG_INPUT_LENGTH, ecg_input
 from ml.common.types import MODALITIES, ArrayDataset
 
 SPLITS = ("train", "val")
@@ -73,7 +74,11 @@ def save_local_dataset(
             frame[schema.label_column] = np.asarray(y, dtype=np.int64)
             frame.to_csv(path, index=False)
         elif modality == "ecg":
-            np.savez_compressed(path, signals=np.asarray(X, dtype=np.float32), labels=np.asarray(y, dtype=np.int64))
+            X = np.asarray(X, dtype=np.float32)
+            arrays = {"signals": X[:, :ECG_BEAT_LENGTH], "labels": np.asarray(y, dtype=np.int64)}
+            if X.ndim == 2 and X.shape[1] == ECG_INPUT_LENGTH:
+                arrays["rr"] = X[:, ECG_BEAT_LENGTH:]  # pre-RR, post-RR, local RR (relative to the record's mean)
+            np.savez_compressed(path, **arrays)
         else:
             np.savez_compressed(path, images=np.asarray(X, dtype=np.uint8), labels=np.asarray(y, dtype=np.int64))
     manifest = {
@@ -124,8 +129,15 @@ def load_local_dataset(
             raise ValueError(f"{path} must contain arrays '{key}' and 'labels'")
         X = np.array(archive[key])
         y = np.array(archive["labels"], dtype=np.int64)
+        rr = np.array(archive["rr"], dtype=np.float32) if modality == "ecg" and "rr" in archive.files else None
     if len(X) != len(y):
         raise ValueError(f"{path}: {len(X)} inputs but {len(y)} labels")
+    if modality == "ecg" and X.ndim == 2 and X.shape[1] == ECG_BEAT_LENGTH:
+        # The model reads each beat followed by its RR inputs. Sources without RR (the Kaggle export) get a
+        # regular rhythm (1.0), which the model can still use but with less information.
+        if rr is None:
+            description = (description + " " if description else "") + "(No RR intervals: regular rhythm assumed.)"
+        X = np.concatenate([X.astype(np.float32), ecg_input(X, rr)[:, ECG_BEAT_LENGTH:]], axis=1)
     return ArrayDataset(X, y, modality, split, source, None, description)
 
 

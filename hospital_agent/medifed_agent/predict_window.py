@@ -143,9 +143,11 @@ class PredictWindow:
         self.predict_button.configure(text="Open heartbeat file…", state="normal")
         ttk.Label(
             self.form,
-            text="Choose a file of single heartbeats: one beat per row, 187 samples at 125 Hz (the MIT-BIH heartbeat "
-            "format; a 188th column with a reference label is allowed). The global model labels every beat as "
-            "N (normal), S (supraventricular ectopic), V (ventricular ectopic) or F (fusion).",
+            text="Choose a file of single heartbeats: one beat per row, 187 samples at 125 Hz, optionally followed by "
+            "pre-RR, post-RR and local RR (each relative to the patient's average RR) and/or a reference label. "
+            "The global model labels every beat as N (normal), S (supraventricular ectopic), V (ventricular "
+            "ectopic) or F (fusion). Without RR intervals a regular rhythm is assumed, and early beats are missed "
+            "more often.",
             style="Muted.TLabel",
             wraplength=680,
         ).pack(anchor="w")
@@ -176,9 +178,9 @@ class PredictWindow:
         def work():
             from ml.prediction.ecg import read_beats
 
-            beats, labels = read_beats(source)
+            beats, labels, rr_given = read_beats(source)
             predictor = self.session.ecg_predictor()
-            table, summary = predictor.score(beats, labels)
+            table, summary = predictor.score(beats, labels, rr_given)
             table.to_csv(target, index=False)
             first = predictor.predict_beats(beats[:1])[0]
             return beats, table, summary, first
@@ -209,6 +211,8 @@ class PredictWindow:
                 f"The file had reference labels: the model agreed on {summary['agreement']:.0%} of "
                 f"{summary['reference_beats']} beats."
             )
+        if not summary.get("rr_given", True):
+            lines.append("This file has no RR intervals, so a regular rhythm was assumed for every beat.")
         lines.append("First beats:")
         for _, r in self.ecg_results.head(12).iterrows():
             region = f", key region {r['key_region_ms']} ms" if r["key_region_ms"] else ""
@@ -234,8 +238,9 @@ class PredictWindow:
             index = max(1, min(int(self.beat_no.get()), len(self.ecg_beats))) - 1
         except (tk.TclError, ValueError):
             return
-        beat = self.ecg_beats[index]
-        result = self.session.ecg_predictor().predict_beats(beat.reshape(1, -1))[0]
+        row = self.ecg_beats[index]
+        beat = row[:187]
+        result = self.session.ecg_predictor().predict_beats(row.reshape(1, -1))[0]
         c = self.canvas
         c.delete("all")
         w, h, pad = int(c.winfo_width() or 680), 170, 14
@@ -253,8 +258,10 @@ class PredictWindow:
         c.create_text(pad, 10, anchor="w", fill=colour, font=("Segoe UI", 10, "bold"),
                       text=f"Beat {index + 1}: {result['code']} – {NAMES[result['code']]} ({result['confidence']:.0%})")
         if e:
+            rr = e["rr"]
             c.create_text(w - pad, 10, anchor="e", fill="#8a5a00", font=("Segoe UI", 9),
-                          text=f"key region {e['start_ms']}–{e['end_ms']} ms")
+                          text=f"key region {e['start_ms']}–{e['end_ms']} ms · RR pre {rr['pre_rr']:.2f}, "
+                               f"post {rr['post_rr']:.2f} · rhythm effect {e['rhythm_drop']:+.2f}")
 
     def clear(self) -> None:
         for variable in self.entries.values():

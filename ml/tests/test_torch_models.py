@@ -16,7 +16,7 @@ from ml.simulation.ehr import simulate_ehr  # noqa: E402
 from ml.simulation.xray import simulate_xray  # noqa: E402
 
 SIMULATORS = {"ehr": simulate_ehr, "ecg": simulate_ecg, "xray": simulate_xray}
-EXPECTED = {"ehr": "TabNet", "ecg": "CNN-BiLSTM", "xray": "EfficientNet-B3"}
+EXPECTED = {"ehr": "TabNet", "ecg": "CNN-BiLSTM+RR", "xray": "EfficientNet-B3"}
 
 
 def _adapter(modality):
@@ -188,25 +188,32 @@ def test_numpy_reference_refuses_options_it_does_not_implement():
         TrainConfig(class_weighting="sometimes").validate()
 
 
-def test_rr_model_reads_beats_plus_rr_and_leaves_the_default_model_alone():
-    from ml.ecg.cnn_bilstm import CNNBiLSTMRRAdapter
+def test_platform_ecg_model_reads_beats_plus_rr_and_the_shape_only_model_ignores_rr():
+    from ml.ecg.cnn_bilstm import CNNBiLSTMAdapter, CNNBiLSTMRRAdapter
     from ml.registry import adapter_override
 
     default = get_adapter("ecg", "pytorch")
-    rr = CNNBiLSTMRRAdapter()
-    base, extra = default.init_weights(0), rr.init_weights(0)
+    assert isinstance(default, CNNBiLSTMRRAdapter) and default.architecture == "CNN-BiLSTM+RR"
+    shape_only = CNNBiLSTMAdapter()
+    extra, base = default.init_weights(0), shape_only.init_weights(0)
     assert set(base) == set(extra)
     assert extra["head.weight"].shape == (4, 131) and base["head.weight"].shape == (4, 128)
     # The convolution and LSTM start from the same values: only the classifier differs.
     assert all(np.array_equal(base[k], extra[k]) for k in base if not k.startswith("head."))
+    assert default.signature(extra) != shape_only.signature(base)  # old ECG models are not averaged with new ones
 
     X, _ = simulate_ecg(64, np.random.default_rng(0))
-    rows = np.concatenate([X, np.ones((len(X), 3), np.float32)], axis=1)
-    probs = rr.predict_proba(extra, rows)
+    rows = np.concatenate([X, np.full((len(X), 3), 0.7, np.float32)], axis=1)
+    probs = default.predict_proba(extra, rows)
     assert probs.shape == (64, 4) and np.allclose(probs.sum(axis=1), 1.0, atol=1e-5)
+    # Beats alone are accepted: the RR inputs are taken as a regular rhythm (1.0).
+    regular = np.concatenate([X, np.ones((len(X), 3), np.float32)], axis=1)
+    assert np.allclose(default.predict_proba(extra, X), default.predict_proba(extra, regular), atol=1e-6)
     with pytest.raises(ValueError):
-        rr.predict_proba(extra, X)  # beats without RR inputs
+        default.predict_proba(extra, X[:, :100])
+    # The beat-shape-only model (experiments 1a-1e) drops RR inputs if a row carries them.
+    assert np.allclose(shape_only.predict_proba(base, rows), shape_only.predict_proba(base, X), atol=1e-6)
 
-    with adapter_override("ecg", rr):
-        assert get_adapter("ecg") is rr
+    with adapter_override("ecg", shape_only):
+        assert get_adapter("ecg") is shape_only
     assert get_adapter("ecg", "pytorch") is default

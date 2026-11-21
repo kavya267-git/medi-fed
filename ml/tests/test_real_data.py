@@ -98,7 +98,8 @@ def test_prepare_ecg_heartbeat_export_drops_class_q(tmp_path):
     total = sum(m["splits"]["train"] + m["splits"]["val"] for m in manifests.values())
     assert total == 290
     dataset = load_local_dataset(tmp_path / "hospitals" / "hospital_b", "ecg", "val")
-    assert dataset.X.shape[1] == 187 and dataset.y.max() <= 3 and dataset.source == "mit-bih"
+    assert dataset.X.shape[1] == 190 and dataset.y.max() <= 3 and dataset.source == "mit-bih"
+    assert np.all(dataset.X[:, 187:] == 1.0) and "regular rhythm assumed" in dataset.description  # export has no RR
     with pytest.raises(ValueError, match="Expected 188 columns"):
         bad = tmp_path / "bad.csv"
         pd.DataFrame(np.zeros((3, 10))).to_csv(bad, index=False, header=False)
@@ -133,3 +134,35 @@ def test_prepare_chestxray14_groups_by_patient_and_resizes(tmp_path):
     assert set(np.unique(dataset.y)) <= {0, 1} and dataset.source == "nih-chestxray14"
     with pytest.raises(ValueError, match="No images"):
         prepare_chestxray14(entries, tmp_path / "nowhere", tmp_path / "hospitals", HOSPITALS)
+
+
+def test_prepare_mitdb_records_keeps_rr_and_each_patient_in_one_hospital(tmp_path):
+    from ml.common.real_data import prepare_mitdb_records
+    from ml.simulation.ecg import simulate_ecg_with_rr
+
+    rng = np.random.default_rng(1)
+    records = {100 + k: simulate_ecg_with_rr(60, rng) for k in range(12)}
+    manifests = prepare_mitdb_records(records, tmp_path / "hospitals", hospital_ids=["hospital_a", "hospital_b"])
+    total = sum(m["splits"]["train"] + m["splits"]["val"] for m in manifests.values())
+    assert total == 12 * 60
+    seen = {}
+    for hospital in ("hospital_a", "hospital_b"):
+        for split in ("train", "val"):
+            data = load_local_dataset(tmp_path / "hospitals" / hospital, "ecg", split)
+            assert data.X.shape[1] == 190 and "RR intervals" in data.description
+            assert not np.all(data.X[:, 187:] == 1.0)  # real RR values, not the regular-rhythm default
+            for row in data.X:
+                key = row.tobytes()
+                seen.setdefault(key, set()).add((hospital, split))
+    assert all(len(places) == 1 for places in seen.values())
+
+
+def test_simulated_rr_marks_early_beats():
+    from ml.simulation.ecg import simulate_rr
+
+    labels = np.array([0] * 400 + [1] * 400 + [2] * 400)
+    rr = simulate_rr(labels, np.random.default_rng(0))
+    assert rr.shape == (1200, 3)
+    pre = rr[:, 0]
+    assert pre[400:800].mean() < 0.85 < pre[:400].mean()  # supraventricular ectopic beats come early
+    assert rr[800:, 1].mean() > rr[:400, 1].mean() + 0.2  # ventricular beats: compensatory pause after
