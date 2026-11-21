@@ -7,6 +7,7 @@ import { useSystem } from '../../context/SystemContext'
 import { ROLE_LABELS } from '../../utils/constants'
 import { classNames } from '../../utils/format'
 import { SimulatedTag } from '../ui/Badge'
+import { ThemeToggle } from '../ui/ThemeToggle'
 import { Logo } from './Logo'
 import { api } from '../../services/endpoints'
 import { navItemsFor } from './navigation'
@@ -161,6 +162,7 @@ export function AppShell() {
               <p className="max-w-56 truncate text-sm font-medium text-ink">{user?.display_name || user?.email}</p>
               <p className="text-xs text-muted">{ROLE_LABELS[user?.role] || user?.role}</p>
             </div>
+            <ThemeToggle />
             <button
               type="button"
               onClick={signOut}

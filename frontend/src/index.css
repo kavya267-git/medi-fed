@@ -115,6 +115,138 @@
   }
 }
 
+/*
+  Drop-down lists: the browser draws the open list itself. Without this it uses a white background
+  with the page's (white) text, so only the highlighted option could be read.
+*/
+select option,
+select optgroup {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+}
+
+/*
+  Light theme: html[data-theme="light"], chosen with the switch in the top bar (saved per browser).
+  The same tokens as above, re-valued for a white background. Contrast on surface (#ffffff):
+  ink 16.1, muted 7.4, faint 4.9, brand-700 9.6.
+*/
+:root[data-theme='light'] {
+  --color-canvas: #eef2f8;
+  --color-surface: #ffffff;
+  --color-raised: #f4f7fb;
+  --color-ink: #0f1d33;
+  --color-muted: #44546d;
+  --color-faint: #5d6c84;
+  --color-line: #dbe3ee;
+  --color-line-strong: #c2cedf;
+
+  --color-brand-950: #0b1a30;
+  --color-brand-900: #13284a;
+  --color-brand-800: #1c365f;
+  --color-brand-700: #27466f;
+  --color-brand-600: #345a8a;
+  --color-brand-500: #4a72a6;
+  --color-brand-400: #6f8fbb;
+  --color-brand-300: #9fb5d3;
+  --color-brand-200: #c9d6e8;
+  --color-brand-100: #e1e9f4;
+  --color-brand-50: #eef3fa;
+
+  --color-violet: #6a55d6;
+  --color-violet-soft: rgb(106 85 214 / 0.12);
+  --color-ehr: #4f5fd6;
+  --color-ehr-soft: rgb(79 95 214 / 0.12);
+  --color-ecg: #c92a62;
+  --color-ecg-soft: rgb(201 42 98 / 0.1);
+  --color-xray: #157a9b;
+  --color-xray-soft: rgb(21 122 155 / 0.12);
+  --color-diabetes: #7347cc;
+  --color-diabetes-soft: rgb(115 71 204 / 0.12);
+
+  --color-ok: #1b8a5a;
+  --color-ok-soft: rgb(27 138 90 / 0.12);
+  --color-warn: #b7791f;
+  --color-warn-soft: rgb(183 121 31 / 0.14);
+  --color-warn-ink: #8a5a00;
+  --color-alert: #cc3b3b;
+  --color-alert-soft: rgb(204 59 59 / 0.1);
+  --color-nodata: #6b778a;
+  --color-nodata-soft: rgb(107 119 138 / 0.12);
+  --color-forecast: #7351d6;
+  --color-forecast-soft: rgb(115 81 214 / 0.12);
+
+  --shadow-card: 0 1px 2px rgb(15 29 51 / 0.06), 0 12px 32px -20px rgb(15 29 51 / 0.25);
+  --shadow-raised: 0 24px 60px -28px rgb(15 29 51 / 0.35);
+}
+
+html[data-theme='light'] {
+  background:
+    radial-gradient(900px 600px at 88% -8%, rgb(198 171 149 / 0.22), transparent 60%),
+    radial-gradient(800px 600px at 0% 0%, rgb(128 160 197 / 0.22), transparent 60%),
+    linear-gradient(160deg, #f6f8fc 0%, #eef2f8 55%, #e7e1da 100%);
+  background-attachment: fixed;
+  color-scheme: light;
+}
+
+/* The few places written with white overlays (made for the dark theme) use a navy tint instead. */
+html[data-theme='light'] .border-white\/10 { border-color: rgb(15 29 51 / 0.1); }
+html[data-theme='light'] .border-white\/15 { border-color: rgb(15 29 51 / 0.13); }
+html[data-theme='light'] .border-white\/20 { border-color: rgb(15 29 51 / 0.18); }
+html[data-theme='light'] .bg-white\/5,
+html[data-theme='light'] .disabled\:bg-white\/5:disabled,
+html[data-theme='light'] .hover\:bg-white\/5:hover { background-color: rgb(15 29 51 / 0.04); }
+html[data-theme='light'] .bg-white\/10,
+html[data-theme='light'] .hover\:bg-white\/10:hover { background-color: rgb(15 29 51 / 0.07); }
+html[data-theme='light'] .glass {
+  background: rgb(255 255 255 / 0.78);
+  border-color: rgb(15 29 51 / 0.1);
+}
+html[data-theme='light'] .text-sand-gradient {
+  background-image: linear-gradient(100deg, #9a7b62 0%, #7d6452 55%, #5e4f45 100%);
+}
+html[data-theme='light'] .theme-dark .text-sand-gradient {
+  background-image: linear-gradient(100deg, #e8d5c3 0%, #c6ab95 55%, #9a8a7f 100%);
+}
+html[data-theme='light'] .leaflet-container { background: #dfe6f0; }
+
+/* Charts: axis labels, grid and tooltips follow the theme (CSS wins over the chart's own colours). */
+html[data-theme='light'] .recharts-cartesian-axis-tick-value,
+html[data-theme='light'] .recharts-label { fill: var(--color-muted); }
+html[data-theme='light'] .recharts-cartesian-grid line,
+html[data-theme='light'] .recharts-cartesian-axis-line { stroke: var(--color-line); }
+html[data-theme='light'] .recharts-default-tooltip {
+  background: var(--color-surface) !important;
+  border-color: var(--color-line-strong) !important;
+  color: var(--color-ink) !important;
+  box-shadow: var(--shadow-raised) !important;
+}
+html[data-theme='light'] .recharts-tooltip-label { color: var(--color-ink) !important; }
+html[data-theme='light'] .recharts-legend-item-text { color: var(--color-muted) !important; }
+
+/*
+  Always dark, whatever the theme: the sign-in story (glowing particles need a dark sky).
+  Re-declares the dark tokens for everything inside it.
+*/
+.theme-dark {
+  --color-canvas: #12233c;
+  --color-surface: #1b2f4e;
+  --color-raised: #22395c;
+  --color-ink: #ffffff;
+  --color-muted: #c0cee2;
+  --color-faint: #93a8c6;
+  --color-line: #2f4669;
+  --color-line-strong: #41597f;
+  --color-brand-700: #c3d5ea;
+  --color-brand-600: #9db8d8;
+  --color-brand-200: #3a5a85;
+  color: var(--color-ink);
+  color-scheme: dark;
+  background:
+    radial-gradient(900px 600px at 88% -8%, rgb(198 171 149 / 0.16), transparent 60%),
+    radial-gradient(800px 600px at 0% 0%, rgb(128 160 197 / 0.18), transparent 60%),
+    linear-gradient(160deg, #1a3050 0%, #12233c 40%, #0d0d0d 100%);
+}
+
 /* The sign-in hero: the pale sky of the illustrations, with a soft glow where the coordinator sits. */
 .hero-sky {
   background: transparent;

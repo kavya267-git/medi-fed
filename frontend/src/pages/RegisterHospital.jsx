@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Logo } from '../components/layout/Logo'
 import { Button } from '../components/ui/Button'
 import { Field, Select, inputClass } from '../components/ui/Misc'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { toApiError } from '../services/api'
 import { api } from '../services/endpoints'
 import { MIN_PASSWORD_LENGTH } from '../utils/constants'
@@ -96,7 +97,10 @@ export default function RegisterHospital() {
   return (
     <div className="min-h-screen bg-canvas px-5 py-10">
       <div className="mx-auto w-full max-w-xl">
-        <Logo />
+        <div className="flex items-center justify-between gap-3">
+          <Logo />
+          <ThemeToggle />
+        </div>
         {receipt ? (
           <div className="mt-8 rounded-lg border border-line bg-surface p-6">
             <div className="flex items-start gap-3">

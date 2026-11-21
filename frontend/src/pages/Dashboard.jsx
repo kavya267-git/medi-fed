@@ -41,7 +41,7 @@ function FederationBanner({ data }) {
       <div className="relative grid items-center gap-6 md:grid-cols-[1fr_1fr]">
         <div className="px-6 py-7 md:px-9 md:py-9">
           <p className="text-sm font-medium text-brand-600">{active ? 'Training now' : 'Federation'}</p>
-          <p className="mt-2 font-display text-[1.9rem] font-bold uppercase leading-[1.1] text-white">
+          <p className="mt-2 font-display text-[1.9rem] font-bold uppercase leading-[1.1] text-ink">
             {kpis.hospitals_online} of {kpis.participating_hospitals} hospitals
             <span className="text-sand-gradient block">online now</span>
           </p>

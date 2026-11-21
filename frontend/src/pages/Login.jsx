@@ -10,6 +10,7 @@ import { Field, inputClass } from '../components/ui/Misc'
 import { LoadingState } from '../components/ui/StateViews'
 import { useAuth } from '../context/AuthContext'
 import { useSystem } from '../context/SystemContext'
+import { ThemeToggle } from '../components/ui/ThemeToggle'
 import { toApiError } from '../services/api'
 import { MIN_PASSWORD_LENGTH, ROLE_LABELS, homePathFor } from '../utils/constants'
 
@@ -152,7 +153,7 @@ export default function Login() {
     <div className="grid min-h-screen lg:grid-cols-[1.05fr_1fr]">
       {/* What the platform is, for someone seeing it for the first time. */}
       {/* Stays one screen tall while the form column scrolls, so the privacy note is always in view. */}
-      <section className="relative sticky top-0 hidden h-screen flex-col overflow-hidden lg:flex">
+      <section className="theme-dark relative sticky top-0 hidden h-screen flex-col overflow-hidden lg:flex">
         <div className="relative z-10 px-12 pt-10">
           <Logo />
           <motion.div
@@ -205,7 +206,8 @@ export default function Login() {
         </div>
       </section>
 
-      <section className="flex items-center justify-center px-5 py-10">
+      <section className="relative flex items-center justify-center px-5 py-10">
+        <ThemeToggle className="absolute right-5 top-5" />
         <div className="glass w-full max-w-md rounded-[28px] px-7 py-8 shadow-[0_40px_80px_-40px_rgb(3_10_24/0.9)]">
           <div className="mb-6 lg:hidden">
             <Logo />
