@@ -8,3 +8,5 @@ pandas==3.1.0
 scikit-learn==1.9.1
 requests==2.34.2
 keyring>=25
+# Secure aggregation: X25519 key agreement and ChaCha20 masks (analytics/privacy/secure_aggregation.py).
+cryptography>=42

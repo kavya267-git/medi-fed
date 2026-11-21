@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from analytics.explainability.service import pool_global_importance
+from analytics.privacy import secure_aggregation as secagg
 from analytics.privacy.dp import DPConfig, next_clip_norm
 from app.database import Database
 from app.federated import screening
@@ -232,6 +233,7 @@ class Coordinator:
         deadline_seconds: int = DEFAULT_DEADLINE_SECONDS,
         simulated_missing_rate: float = 0.0,
         class_weighting: Optional[str] = None,
+        secure_aggregation: bool = False,
     ) -> Dict[str, Any]:
         """Create a round, select the participating hospitals and open it for clients.
 
@@ -271,6 +273,14 @@ class Coordinator:
             for h in candidate_hospitals
             if h["online"] and h.get("participating", True) and modality in (h["modalities"] or [])
         ]
+        if secure_aggregation and len(selected) < secagg.MIN_HOSPITALS:
+            raise ConflictError(
+                f"Secure aggregation needs at least {secagg.MIN_HOSPITALS} online hospitals (with two, each could "
+                f"subtract its own update from the sum and recover the other's); {len(selected)} can take part."
+            )
+        if secure_aggregation:
+            # Masks only cancel when every selected hospital submits, so all of them are required.
+            min_participants = len(selected)
         if len(selected) < min_participants:
             opted_out = sum(1 for h in candidate_hospitals if not h.get("participating", True))
             raise ConflictError(
@@ -320,6 +330,11 @@ class Coordinator:
                     "base_version": model["version"],
                 },
                 "explainability": {"global_importance": is_tabular(modality)},
+                "secure_aggregation": (
+                    {"enabled": True, "method": secagg.METHOD, "hospitals": sorted(h["id"] for h in selected)}
+                    if secure_aggregation
+                    else {"enabled": False}
+                ),
             }
             now = utc_now_iso()
             self.db.insert(
@@ -424,6 +439,7 @@ class Coordinator:
             "differential_privacy": config["differential_privacy"],
             "model": config["model"],
             "explainability": config.get("explainability", {}),
+            "secure_aggregation": config.get("secure_aggregation", {"enabled": False}),
             # Set when the round completes: the version the aggregated model was registered as.
             "result_model_version": round_row.get("result_model_version"),
         }
@@ -445,6 +461,48 @@ class Coordinator:
                 self._touch_hospital(hospital_id)
             self.audit.record("HOSPITAL_JOINED_ROUND", hospital_id, hospital_id=hospital_id, round_id=round_id)
         return self.node_round_info(round_id)
+
+    # ======================================================= secure aggregation
+    @staticmethod
+    def _secure(round_row: Dict[str, Any]) -> bool:
+        return bool((round_row["config"].get("secure_aggregation") or {}).get("enabled"))
+
+    def register_secagg_key(self, round_id: str, hospital_id: str, public_key: str) -> Dict[str, Any]:
+        """A participant's X25519 public key for this round's pairwise masks."""
+        with self._lock(round_id):
+            round_row = self.get_round(round_id)
+            if not self._secure(round_row):
+                raise ConflictError(f"Round '{round_id}' does not use secure aggregation")
+            if round_row["status"] not in COLLECTING:
+                raise ConflictError(f"Round '{round_id}' is {round_row['status']}")
+            participant = self._participant(round_id, hospital_id)
+            if participant["status"] not in (P_JOINED, P_TRAINING):
+                raise ConflictError(f"Hospital '{hospital_id}' must join the round before sending its key")
+            if participant.get("secagg_public_key"):
+                raise ConflictError(f"Hospital '{hospital_id}' already sent its key for round '{round_id}'")
+            try:
+                secagg.check_public_key(public_key)
+            except secagg.SecureAggregationError as exc:
+                raise ValidationFailed(str(exc)) from exc
+            self._set_participant(round_id, hospital_id, secagg_public_key=public_key)
+            self.audit.record("SECAGG_KEY_RECEIVED", hospital_id, hospital_id=hospital_id, round_id=round_id)
+        return self.secagg_keys(round_id, hospital_id)
+
+    def secagg_keys(self, round_id: str, hospital_id: str) -> Dict[str, Any]:
+        """Every selected hospital's public key, once all have sent one; until then, who is still missing."""
+        round_row = self.get_round(round_id)
+        if not self._secure(round_row):
+            raise ConflictError(f"Round '{round_id}' does not use secure aggregation")
+        self._participant(round_id, hospital_id)  # only participants may ask
+        keys = {p["hospital_id"]: p.get("secagg_public_key") for p in self.participants(round_id)}
+        missing = sorted(h for h, k in keys.items() if not k)
+        return {
+            "round_id": round_id,
+            "ready": not missing and round_row["status"] in COLLECTING,
+            "status": round_row["status"],
+            "waiting_for": len(missing),
+            "public_keys": {} if missing else keys,
+        }
 
     # ==================================================== 3-4. distribute model
     def global_model_bytes(self, round_id: str, hospital_id: str, which: str = "base") -> bytes:
@@ -508,6 +566,10 @@ class Coordinator:
             now = utc_now_iso()
             update_id = f"{round_id}:{hospital_id}"
             base_weights = self.registry.load_weights(modality, round_row["base_model_version"])
+            if self._secure(round_row):
+                return self._receive_masked_update(
+                    round_row, hospital_id, payload, num_samples, metrics, dp_report, declared_signature, base_weights
+                )
 
             try:
                 validated = validate_update(
@@ -637,6 +699,85 @@ class Coordinator:
             "update_norm": validated.update_norm,
         }
 
+    def _receive_masked_update(
+        self,
+        round_row: Dict[str, Any],
+        hospital_id: str,
+        payload: bytes,
+        num_samples: int,
+        metrics: Optional[dict],
+        dp_report: Optional[dict],
+        declared_signature: Optional[str],
+        base_weights,
+    ) -> Dict[str, Any]:
+        """A secure-aggregation upload: only its size, tensors, shapes and type can be checked."""
+        import hashlib
+
+        round_id, modality = round_row["id"], round_row["modality"]
+        model_config = round_row["config"]["model"]
+        now = utc_now_iso()
+        update_id = f"{round_id}:{hospital_id}"
+        reason = None
+        if len(payload) > self.max_update_bytes:
+            reason = f"Update is {len(payload)} bytes; the limit is {self.max_update_bytes}"
+        elif int(num_samples) <= 0:
+            reason = "The update reports no training samples"
+        elif declared_signature and declared_signature != model_config["architecture_signature"]:
+            reason = "The update was trained on a different model architecture than this round's"
+        else:
+            try:
+                secagg.check_masked_update(weights_from_bytes(payload), base_weights)
+            except Exception as exc:  # IncompatibleWeightsError or SecureAggregationError
+                reason = str(exc)
+        if reason:
+            self.db.insert(
+                "model_updates",
+                {
+                    "id": update_id, "round_id": round_id, "hospital_id": hospital_id, "modality": modality,
+                    "architecture_signature": declared_signature, "num_samples": int(num_samples),
+                    "size_bytes": len(payload), "dp_report": dp_report, "status": "REJECTED",
+                    "rejection_reason": reason, "received_at": now,
+                },
+            )
+            self._set_participant(round_id, hospital_id, status=P_REJECTED, error=reason, update_received_at=now)
+            self.audit.record(
+                "LOCAL_UPDATE_RECEIVED", hospital_id, status="REJECTED", hospital_id=hospital_id, round_id=round_id,
+                details={"reason": reason, "secure_aggregation": True},
+            )
+            self._after_participant_change(round_id)
+            raise ValidationFailed(f"Update rejected: {reason}")
+        digest = hashlib.sha256(payload).hexdigest()
+        path = self._update_file(round_id, hospital_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(payload)
+        self.db.insert(
+            "model_updates",
+            {
+                "id": update_id, "round_id": round_id, "hospital_id": hospital_id, "modality": modality,
+                "architecture_signature": model_config["architecture_signature"], "num_samples": int(num_samples),
+                "weights_sha256": digest, "size_bytes": len(payload), "update_norm": None, "dp_report": dp_report,
+                "status": "VALIDATED", "rejection_reason": None, "storage_path": str(path), "received_at": now,
+            },
+        )
+        metrics = metrics or {}
+        self._set_participant(
+            round_id, hospital_id, status=P_SUBMITTED, num_samples=int(num_samples), local_metrics=metrics,
+            update_received_at=now,
+        )
+        self._touch_hospital(hospital_id)
+        self.audit.record(
+            "LOCAL_UPDATE_RECEIVED", hospital_id, hospital_id=hospital_id, round_id=round_id,
+            model_version=f"{modality} v{round_row['base_model_version']}",
+            details={
+                "num_samples": int(num_samples), "masked_sha256": digest, "size_bytes": len(payload),
+                "secure_aggregation": True, "differential_privacy": bool((dp_report or {}).get("enabled")),
+            },
+        )
+        self._set_round(round_id, status=UPDATES_RECEIVING)
+        self._after_participant_change(round_id)
+        return {"round_id": round_id, "hospital_id": hospital_id, "status": "VALIDATED", "weights_sha256": digest,
+                "update_norm": None}
+
     def _after_participant_change(self, round_id: str) -> None:
         """Decide whether the round can aggregate, must fail, or should keep waiting."""
         round_row = self.get_round(round_id)
@@ -646,6 +787,15 @@ class Coordinator:
         pending = [p for p in participants if p["status"] in P_PENDING]
         submitted = [p for p in participants if p["status"] == P_SUBMITTED]
         minimum = int(round_row["config"]["min_participants"])
+        if self._secure(round_row):
+            lost = sorted(p["hospital_id"] for p in participants if p["status"] not in P_PENDING and p["status"] != P_SUBMITTED)
+            if lost:
+                self.fail_round(
+                    round_id,
+                    "Secure aggregation needs an update from every selected hospital, and "
+                    f"{', '.join(lost)} did not send one; without it the masks cannot cancel. Start a new round.",
+                )
+                return
         if len(submitted) + len(pending) < minimum:
             self.fail_round(
                 round_id,
@@ -683,16 +833,26 @@ class Coordinator:
                 details={"algorithm": "FedAvg", "hospitals": [u["hospital_id"] for u in valid]},
             )
             try:
+                secure = self._secure(round_row)
                 client_updates = [
                     ClientUpdate(
                         u["hospital_id"], weights_from_bytes(Path(u["storage_path"]).read_bytes()), u["num_samples"]
                     )
                     for u in valid
                 ]
-                averaged = federated_average(client_updates)
-                coefficients = aggregation_weights(client_updates)
-                self._aggregated_file(round_id).write_bytes(weights_to_bytes(averaged))
                 base_weights = self.registry.load_weights(modality, round_row["base_model_version"])
+                coefficients = aggregation_weights(client_updates)
+                if secure:
+                    # The masks cancel in the sum: only sum_k n_k * W_k is ever formed, never one hospital's W_k.
+                    averaged = secagg.unmask_average(
+                        [u.weights for u in client_updates], sum(u.num_samples for u in client_updates), base_weights
+                    )
+                    problems = secagg.plausible_average(averaged, base_weights)
+                    if problems:
+                        raise ValueError("the unmasked average is not plausible (" + "; ".join(problems[:3]) + ")")
+                else:
+                    averaged = federated_average(client_updates)
+                self._aggregated_file(round_id).write_bytes(weights_to_bytes(averaged))
             except Exception as exc:
                 self._set_round(round_id, aggregation_status="FAILED")
                 self.audit.record(
@@ -705,7 +865,15 @@ class Coordinator:
                 "UPDATE model_updates SET status = 'AGGREGATED' WHERE round_id = :round_id AND status = 'VALIDATED'",
                 {"round_id": round_id},
             )
-            self._screen_updates(round_id, modality, base_weights, client_updates, actor)
+            if secure:
+                self.audit.record(
+                    "UPDATE_SCREENING_SKIPPED",
+                    SYSTEM_ACTOR,
+                    round_id=round_id,
+                    details={"reason": "secure aggregation: the coordinator cannot see individual updates"},
+                )
+            else:
+                self._screen_updates(round_id, modality, base_weights, client_updates, actor)
             config = dict(round_row["config"])
             dp_settings = DPConfig.from_dict(config.get("differential_privacy"))
             if dp_settings.enabled and dp_settings.adaptive_clipping:
@@ -722,7 +890,7 @@ class Coordinator:
                     "estimated_share_unclipped": step["estimated_share_unclipped"],
                 }
             config["aggregation"] = {
-                "algorithm": "FedAvg",
+                "algorithm": "FedAvg (secure aggregation)" if secure else "FedAvg",
                 "coefficients": coefficients,
                 "total_samples": int(sum(u.num_samples for u in client_updates)),
             }

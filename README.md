@@ -23,7 +23,8 @@ Hospital D ── local training ──┘    (weights, sample counts, summary m
 | --- | --- |
 | Federated learning | Round lifecycle (created → waiting → training → receiving updates → aggregating → evaluating → completed / failed), update validation, FedAvg weighted by sample count, federated evaluation, model versioning |
 | Modalities | EHR → TabNet, ECG → CNN-BiLSTM with RR-interval inputs (CNN-BiLSTM+RR), X-ray → EfficientNet-B3, diabetes (real PIMA records) → small neural network. Separate registries and aggregation; incompatible architectures are never averaged |
-| Prediction | The hospital agent's **Predict** window uses the global model the hospital kept on a new patient (EHR, diabetes), with the reasons (Shapley values) - on the hospital's computer, nothing sent ([docs/prediction.md](docs/prediction.md)) |
+| Prediction | The hospital agent's **Predict** window uses the global model the hospital kept on a new patient (EHR, diabetes) or a file of heartbeats (ECG), with the reasons - on the hospital's computer, nothing sent ([docs/prediction.md](docs/prediction.md)) |
+| Security | HTTPS required beyond the local network; optional **secure aggregation** (pairwise masks: the server sees only the sum of updates); optional differential privacy; revocable hashed tokens; hash-chained audit log ([docs/security.md](docs/security.md)) |
 | Hospitals | Four nodes, each with its own data directory. Run in-process for a demo or as separate processes over HTTP |
 | Surveillance | Regional weekly counts from hospital-reported totals with small-count suppression, choropleth map, hotspot *candidates* (z-score), never "outbreaks" |
 | Forecasting | Naive, seasonal and autoregressive models compared by rolling-origin validation (MAE, RMSE), forecast with 80% / 95% intervals |
@@ -104,6 +105,7 @@ The PyTorch model tests are skipped automatically when PyTorch is not installed.
 - [docs/api.md](docs/api.md) - every endpoint
 - [docs/prediction.md](docs/prediction.md) - the diabetes model (real PIMA records) and predicting for new patients in the hospital agent
 - [docs/resource-planning.md](docs/resource-planning.md) - how the hospital bed projection is calculated, with a worked example
+- [docs/security.md](docs/security.md) - what leaves a hospital, how it is protected (HTTPS, secure aggregation, differential privacy, tokens, audit log) and the limits
 - [docs/permissions.md](docs/permissions.md) - roles (including health officers, researchers and hospital managers), what each may do, and the demo accounts
 - [data/boundaries/README.md](data/boundaries/README.md) - the Karnataka district boundaries (geoBoundaries, ODbL 1.0) and how to load them
 - [docs/methodology.md](docs/methodology.md) - models, FedAvg, evaluation, hotspot and forecast methods, explainability, privacy, and their limits

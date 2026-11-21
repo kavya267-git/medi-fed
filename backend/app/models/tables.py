@@ -118,6 +118,8 @@ TABLES: Dict[str, List[Column]] = {
         ("joined_at", "timestamp", ""),
         ("update_received_at", "timestamp", ""),
         ("evaluated_at", "timestamp", ""),
+        # Secure aggregation: this hospital's X25519 public key for the round (never a private key).
+        ("secagg_public_key", "text", ""),
     ],
     "model_registry": [
         ("id", "text", "PRIMARY KEY"),

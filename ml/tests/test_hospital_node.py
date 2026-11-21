@@ -157,3 +157,21 @@ def test_simulated_gaps_are_imputed_from_the_training_split_and_reported_as_coun
 
     node.evaluate_and_report("r1", info)
     assert all(f.shape == train.shape for f in fitted)
+
+
+def test_node_token_is_only_sent_over_https_or_the_local_network(monkeypatch):
+    from ml.training.http_transport import InsecureServerError, HttpTransport, check_server_url, is_local_address
+
+    monkeypatch.delenv("MEDIFED_ALLOW_INSECURE_HTTP", raising=False)
+    assert check_server_url("https://medifed.example.org/") == "https://medifed.example.org"
+    for local in ("http://localhost:8000", "http://127.0.0.1:8000", "http://192.168.1.20:8000", "http://10.0.0.5",
+                  "http://172.20.1.1", "http://coordinator-laptop:8000", "http://medifed.local", "http://[::1]:8000"):
+        assert check_server_url(local)
+    for public in ("http://medifed.example.org", "http://8.8.8.8:8000", "ftp://192.168.1.2", "medifed.example.org"):
+        with pytest.raises(InsecureServerError):
+            check_server_url(public)
+    with pytest.raises(InsecureServerError):
+        HttpTransport("http://medifed.example.org", "token")
+    monkeypatch.setenv("MEDIFED_ALLOW_INSECURE_HTTP", "1")
+    assert check_server_url("http://medifed.example.org")
+    assert is_local_address("hospital-pc") and not is_local_address("example.com")

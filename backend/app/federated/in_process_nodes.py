@@ -62,6 +62,12 @@ class LocalTransport:
     def report_failure(self, round_id: str, hospital_id: str, stage: str, message: str) -> None:
         self.coordinator.report_failure(round_id, hospital_id, stage, message)
 
+    def register_secagg_key(self, round_id: str, hospital_id: str, public_key: str) -> dict:
+        return self.coordinator.register_secagg_key(round_id, hospital_id, public_key)
+
+    def secagg_keys(self, round_id: str, hospital_id: str) -> dict:
+        return self.coordinator.secagg_keys(round_id, hospital_id)
+
 
 class InProcessNodes:
     def __init__(

@@ -72,6 +72,8 @@ export const AUDIT_ACTION_LABELS = {
   HOSPITAL_CAPACITY_CHANGED: 'Hospital capacity changed',
   PLANNING_ASSUMPTIONS_CHANGED: 'Planning assumptions changed',
   UPDATE_FLAGGED_UNUSUAL: 'Unusual model update flagged',
+  SECAGG_KEY_RECEIVED: 'Secure-aggregation key received',
+  UPDATE_SCREENING_SKIPPED: 'Update screening skipped (secure aggregation)',
   HOSPITAL_REGISTRATION_SUBMITTED: 'Hospital registration submitted',
   HOSPITAL_REGISTRATION_APPROVED: 'Hospital registration approved',
   HOSPITAL_REGISTRATION_REJECTED: 'Hospital registration rejected',

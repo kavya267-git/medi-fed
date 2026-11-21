@@ -108,6 +108,17 @@ describe('StartRoundDialog', () => {
     expect(api.startRound.mock.calls[0][0].differential_privacy).toMatchObject({ enabled: true, adaptive_clipping: true, target_quantile: 0.5 })
   })
 
+  it('sends secure aggregation only when chosen, off by default', async () => {
+    api.startRound.mockResolvedValue(startedRound)
+    renderDialog()
+    const box = screen.getByLabelText(/server sees only the combined update/)
+    expect(box).not.toBeChecked()
+    await userEvent.click(box)
+    await userEvent.click(screen.getByRole('button', { name: 'Start round' }))
+    await waitFor(() => expect(api.startRound).toHaveBeenCalled())
+    expect(api.startRound.mock.calls[0][0].secure_aggregation).toBe(true)
+  })
+
   it('does not offer simulated missing values for ECG', () => {
     renderDialog({ modality: 'ecg' })
     expect(screen.queryByLabelText('Simulated missing values (%)')).not.toBeInTheDocument()

@@ -58,6 +58,11 @@ class CoordinatorTransport(Protocol):
 
     def report_failure(self, round_id: str, hospital_id: str, stage: str, message: str) -> None: ...
 
+    # Secure aggregation only (rounds with ``secure_aggregation.enabled``):
+    def register_secagg_key(self, round_id: str, hospital_id: str, public_key: str) -> dict: ...
+
+    def secagg_keys(self, round_id: str, hospital_id: str) -> dict: ...
+
 
 class HospitalNode:
     def __init__(
@@ -76,6 +81,10 @@ class HospitalNode:
         #: When set, the aggregated model downloaded for evaluation is kept here (bytes) so the node can save it.
         self.keep_result_model = False
         self.last_result_model: Optional[bytes] = None
+        #: This round's secure-aggregation key pairs; the private keys never leave this object.
+        self._secagg_keys: dict = {}
+        #: How long to wait for every hospital's public key before giving up (seconds).
+        self.secagg_wait_seconds = 900.0
 
     # ------------------------------------------------------------- metadata
     def data_summary(self) -> dict:
@@ -84,7 +93,33 @@ class HospitalNode:
 
     # ---------------------------------------------------------------- round
     def join(self, round_id: str) -> dict:
-        return self.transport.join_round(round_id, self.hospital_id, self.data_summary())
+        info = self.transport.join_round(round_id, self.hospital_id, self.data_summary())
+        if (info.get("secure_aggregation") or {}).get("enabled"):
+            from analytics.privacy.secure_aggregation import KeyPair
+
+            keys = KeyPair.generate()  # fresh for every round
+            self._secagg_keys[round_id] = keys
+            self.transport.register_secagg_key(round_id, self.hospital_id, keys.public_b64)
+        return info
+
+    def _peer_keys(self, round_id: str) -> dict:
+        """Wait until every selected hospital has sent its public key, then return them all."""
+        import time
+
+        waited, delay = 0.0, 0.5
+        while True:
+            answer = self.transport.secagg_keys(round_id, self.hospital_id)
+            if answer.get("ready"):
+                return answer["public_keys"]
+            if answer.get("status") not in (None, "WAITING_FOR_CLIENTS", "TRAINING", "UPDATES_RECEIVING"):
+                raise RuntimeError(f"Round {round_id} is {answer.get('status')}; secure aggregation cannot continue")
+            if waited >= self.secagg_wait_seconds:
+                raise RuntimeError(
+                    f"Still waiting for {answer.get('waiting_for')} hospital(s) to send their secure-aggregation key"
+                )
+            time.sleep(delay)
+            waited += delay
+            delay = min(delay * 1.5, 5.0)
 
     def train_and_submit(self, round_id: str, round_info: dict) -> dict:
         modality = round_info["modality"]
@@ -120,7 +155,21 @@ class HospitalNode:
         }
         if output.missing_values is not None:
             metrics["missing_values"] = output.missing_values
-        payload = weights_to_bytes(private_weights)
+        signature = architecture_signature(private_weights, f"{adapter.backend}:{adapter.architecture}")
+        if (round_info.get("secure_aggregation") or {}).get("enabled"):
+            from analytics.privacy.secure_aggregation import mask_update
+
+            keys = self._secagg_keys.get(round_id)
+            if keys is None:
+                raise RuntimeError("This node has no secure-aggregation key for the round; it must join first")
+            # Only the masked upload leaves the hospital; the coordinator can recover the sum, not this update.
+            masked = mask_update(
+                private_weights, output.num_samples, round_id, self.hospital_id, keys, self._peer_keys(round_id)
+            )
+            payload = weights_to_bytes(masked)
+            metrics["secure_aggregation"] = True
+        else:
+            payload = weights_to_bytes(private_weights)
         self.last_update_bytes = len(payload)
         return self.transport.submit_update(
             round_id,
@@ -129,7 +178,7 @@ class HospitalNode:
             output.num_samples,
             metrics,
             dp_report,
-            architecture_signature(private_weights, f"{adapter.backend}:{adapter.architecture}"),
+            signature,
         )
 
     def evaluate_and_report(self, round_id: str, round_info: dict) -> dict:

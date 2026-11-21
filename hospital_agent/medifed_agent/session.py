@@ -58,9 +58,12 @@ class AgentSession:
     # ---------------------------------------------------------- identity
     def identify(self, server: str, token: str, hospital_id: Optional[str] = None) -> dict:
         """The hospital this token belongs to. Built-in demo hospitals (hospital_a-d) need their id as well."""
-        server = server.strip().rstrip("/")
-        if not server.startswith(("https://", "http://")):
-            raise AgentError("The server address must start with https:// (or http:// on a local network).")
+        from ml.training.http_transport import InsecureServerError, check_server_url
+
+        try:
+            server = check_server_url(server)
+        except InsecureServerError as exc:
+            raise AgentError(str(exc)) from exc
         if not token.strip():
             raise AgentError("Paste your hospital's node token first.")
         transport = HttpTransport(server, token.strip(), timeout=30.0)

@@ -2,11 +2,54 @@
 
 from __future__ import annotations
 
+import ipaddress
 import json
+import os
 import time
 from typing import Optional
+from urllib.parse import urlsplit
 
 import requests
+
+#: Set to 1 only for development, to allow plain http:// to any address.
+ALLOW_INSECURE_ENV = "MEDIFED_ALLOW_INSECURE_HTTP"
+_LOCAL_SUFFIXES = (".local", ".lan", ".home.arpa", ".internal")
+
+
+class InsecureServerError(ValueError):
+    """The coordinator address would send the node token and model updates unencrypted over the internet."""
+
+
+def is_local_address(host: str) -> bool:
+    """Loopback, private-network and link-local IPs, and machine names on the local network."""
+    host = (host or "").strip("[]").lower()
+    if not host:
+        return False
+    try:
+        ip = ipaddress.ip_address(host)
+    except ValueError:
+        return host == "localhost" or "." not in host or host.endswith(_LOCAL_SUFFIXES)
+    return ip.is_loopback or ip.is_private or ip.is_link_local
+
+
+def check_server_url(url: str) -> str:
+    """The address, normalised, if it is safe to send a node token to; otherwise ``InsecureServerError``.
+
+    ``https://`` is always accepted (and its certificate is verified). Plain ``http://`` is accepted only on this
+    computer or the local network, where the demo coordinator runs, unless MEDIFED_ALLOW_INSECURE_HTTP=1.
+    """
+    url = (url or "").strip().rstrip("/")
+    parts = urlsplit(url)
+    if parts.scheme == "https" and parts.hostname:
+        return url
+    if parts.scheme == "http" and parts.hostname:
+        if is_local_address(parts.hostname) or os.environ.get(ALLOW_INSECURE_ENV) == "1":
+            return url
+        raise InsecureServerError(
+            f"{parts.hostname} is not on the local network, so the address must start with https:// to keep the "
+            "hospital token and model updates encrypted in transit."
+        )
+    raise InsecureServerError("The server address must start with https:// (or http:// on a local network).")
 
 
 class CoordinatorError(RuntimeError):
@@ -22,7 +65,7 @@ class HttpTransport:
     def __init__(
         self, base_url: str, node_token: str, timeout: float = 120.0, session: Optional[requests.Session] = None
     ):
-        self.base_url = base_url.rstrip("/")
+        self.base_url = check_server_url(base_url)
         self.timeout = timeout
         self.session = session or requests.Session()
         self.headers = {"X-Hospital-Token": node_token}
@@ -43,6 +86,26 @@ class HttpTransport:
         response = self.session.post(
             self._url(f"/rounds/{round_id}/participate"),
             json={"hospital_id": hospital_id, "data_summary": data_summary},
+            headers=self.headers,
+            timeout=self.timeout,
+        )
+        self._check(response)
+        return response.json()
+
+    def register_secagg_key(self, round_id: str, hospital_id: str, public_key: str) -> dict:
+        response = self.session.post(
+            self._url(f"/rounds/{round_id}/secagg-key"),
+            json={"hospital_id": hospital_id, "public_key": public_key},
+            headers=self.headers,
+            timeout=self.timeout,
+        )
+        self._check(response)
+        return response.json()
+
+    def secagg_keys(self, round_id: str, hospital_id: str) -> dict:
+        response = self.session.get(
+            self._url(f"/rounds/{round_id}/secagg-keys"),
+            params={"hospital_id": hospital_id},
             headers=self.headers,
             timeout=self.timeout,
         )

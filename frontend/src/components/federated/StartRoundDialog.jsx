@@ -18,6 +18,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
   const [minParticipants, setMinParticipants] = useState(2)
   const [deadlineSeconds, setDeadlineSeconds] = useState(600)
   const [dpEnabled, setDpEnabled] = useState(false)
+  const [secureAggregation, setSecureAggregation] = useState(false)
   const [clipNorm, setClipNorm] = useState(1.0)
   const [noiseMultiplier, setNoiseMultiplier] = useState(0.1)
   const [missingPercent, setMissingPercent] = useState(0)
@@ -28,7 +29,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
 
   const eligible = hospitals.filter((h) => h.online && h.modalities.includes(modality))
   const chosen = eligible.filter((h) => selected.includes(h.id))
-  const canStart = chosen.length >= minParticipants && !busy
+  const canStart = chosen.length >= (secureAggregation ? Math.max(3, minParticipants) : minParticipants) && !busy
 
   const toggle = (id) => setSelected((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]))
 
@@ -46,6 +47,7 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
         min_participants: Number(minParticipants),
         auto_aggregate: true,
         deadline_seconds: Number(deadlineSeconds),
+        secure_aggregation: secureAggregation,
         simulated_missing_rate: modality === 'ehr' || modality === 'diabetes' ? Number(missingPercent) / 100 : 0,
         differential_privacy: {
           enabled: dpEnabled,
@@ -206,6 +208,25 @@ export function StartRoundDialog({ modality: initialModality, hospitals, onClose
             />
           </Field>
         ) : null}
+
+        <fieldset className="rounded-md border border-line p-4">
+          <legend className="px-1 text-sm font-medium text-ink">Secure aggregation</legend>
+          <label className="flex items-start gap-2.5 text-sm text-ink">
+            <input
+              type="checkbox"
+              className="mt-0.5 h-4 w-4 accent-[#9db8d8]"
+              checked={secureAggregation}
+              onChange={(e) => setSecureAggregation(e.target.checked)}
+            />
+            <span>
+              Hospitals mask their updates, so the server sees only the combined update
+              <span className="mt-0.5 block text-xs leading-snug text-muted">
+                Needs at least 3 hospitals, and every selected hospital must send its update or the round fails.
+                Unusual-update screening is not possible, because no single update is visible.
+              </span>
+            </span>
+          </label>
+        </fieldset>
 
         <fieldset className="rounded-md border border-line p-4">
           <legend className="px-1 text-sm font-medium text-ink">Differential privacy (prototype)</legend>

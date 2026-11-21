@@ -47,6 +47,13 @@ class StartRoundRequest(BaseModel):
             "exercise KNN imputation (fitted on its own training split). 0 = off."
         ),
     )
+    secure_aggregation: bool = Field(
+        default=False,
+        description=(
+            "Hospitals mask their updates so the coordinator sees only the sum. Every selected hospital must "
+            "submit (at least 3), and per-update screening is not possible."
+        ),
+    )
     deadline_seconds: int = Field(
         default=600,
         ge=10,
@@ -124,6 +131,11 @@ class ParticipateRequest(BaseModel):
     data_summary: Optional[Dict[str, Any]] = None
 
 
+class SecaggKeyRequest(BaseModel):
+    hospital_id: str = Field(min_length=1, max_length=64)
+    public_key: str = Field(min_length=40, max_length=64, description="Base64 X25519 public key (32 bytes)")
+
+
 class NodeRoundInfo(OpenModel):
     round_id: str
     modality: Modality
@@ -131,6 +143,7 @@ class NodeRoundInfo(OpenModel):
     training: Dict[str, Any]
     differential_privacy: Dict[str, Any]
     model: Dict[str, Any]
+    secure_aggregation: Dict[str, Any] = {}
     #: The registered version of the round's aggregated model, once the round has completed.
     result_model_version: Optional[int] = None
 
@@ -147,7 +160,8 @@ class UpdateAccepted(BaseModel):
     hospital_id: str
     status: str
     weights_sha256: str
-    update_norm: float
+    #: None under secure aggregation: the coordinator cannot see the update, so cannot measure it.
+    update_norm: Optional[float] = None
 
 
 class EvaluationRequest(BaseModel):

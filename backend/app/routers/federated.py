@@ -32,6 +32,7 @@ from app.schemas.federated import (
     Round,
     RoundDetail,
     RoundMetrics,
+    SecaggKeyRequest,
     StartRoundRequest,
     UpdateAccepted,
 )
@@ -72,6 +73,7 @@ def start_round(
         is_simulated=ctx.settings.demo_mode,
         deadline_seconds=body.deadline_seconds,
         simulated_missing_rate=body.simulated_missing_rate,
+        secure_aggregation=body.secure_aggregation,
     )
     if ctx.nodes is not None:
         ctx.nodes.submit(created["id"])
@@ -180,6 +182,20 @@ def node_pending_rounds(request: Request, hospital_id: str = Query(...), ctx: Ap
 def participate(round_id: str, body: ParticipateRequest, request: Request, ctx: AppContext = Depends(get_ctx)):
     verify_node(request, ctx, body.hospital_id)
     return ctx.coordinator.join(round_id, body.hospital_id, sanitize_data_summary(body.data_summary))
+
+
+@router.post("/rounds/{round_id}/secagg-key")
+def register_secagg_key(round_id: str, body: SecaggKeyRequest, request: Request, ctx: AppContext = Depends(get_ctx)):
+    """A participant's public key for secure aggregation (the private key never leaves the hospital)."""
+    verify_node(request, ctx, body.hospital_id)
+    return ctx.coordinator.register_secagg_key(round_id, body.hospital_id, body.public_key)
+
+
+@router.get("/rounds/{round_id}/secagg-keys")
+def secagg_keys(round_id: str, request: Request, hospital_id: str = Query(...), ctx: AppContext = Depends(get_ctx)):
+    """Every participant's public key once all have sent one (``ready``); otherwise how many are missing."""
+    verify_node(request, ctx, hospital_id)
+    return ctx.coordinator.secagg_keys(round_id, hospital_id)
 
 
 @router.get("/rounds/{round_id}/global-model")
