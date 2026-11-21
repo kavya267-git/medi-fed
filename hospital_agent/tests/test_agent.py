@@ -144,6 +144,39 @@ def test_predict_with_the_saved_global_model_on_this_computer(agent_home, tmp_pa
     }
 
 
+def test_label_heartbeats_with_the_saved_global_ecg_model(agent_home, tmp_path, monkeypatch):
+    """The agent labels a file of heartbeats with the ECG model it kept from a round, on this computer."""
+    import numpy as np
+
+    from ml.common.types import TrainConfig
+    from ml.common.weights import weights_to_bytes
+    from ml.prediction.ecg import CODES, read_beats
+    from ml.registry import get_adapter
+    from ml.simulation.hospitals import SIMULATED_HOSPITALS, generate_hospital_data
+    from ml.training.local_trainer import train_on_local_data
+    from ml.training.model_store import save_global_model
+
+    monkeypatch.setenv("ML_BACKEND", "numpy-reference")
+    generate_hospital_data(tmp_path / "data", SIMULATED_HOSPITALS[0], seed=4, modalities=["ecg"])
+    folder = tmp_path / "data" / SIMULATED_HOSPITALS[0].hospital_id
+    session = AgentSession(log=lambda line: None)
+    assert session.ecg_model_info() is None
+    with pytest.raises(AgentError, match="No global ECG model"):
+        session.ecg_predictor()
+
+    adapter = get_adapter("ecg", "numpy-reference")
+    weights = train_on_local_data(folder, "ecg", adapter.init_weights(0), TrainConfig(2, 32, 0.01, 0), "numpy-reference").weights
+    save_global_model(session.models_dir, "ecg", weights_to_bytes(weights), {"architecture": adapter.architecture, "model_version": 1})
+    assert session.ecg_model_info()["model_version"] == 1
+    predictor = session.ecg_predictor()
+    assert session.ecg_predictor() is predictor
+    beats, labels = read_beats(folder / "ecg" / "val.npz")
+    table, summary = predictor.score(beats[:20], labels[:20])
+    assert len(table) == 20 and set(table["prediction"]) <= set(CODES)
+    assert summary["beats"] == 20 and "agreement" in summary
+    assert np.isfinite(table["confidence"]).all()
+
+
 def test_import_an_export_with_own_headings_then_score_new_patients(agent_home, tmp_path, monkeypatch):
     """Import with the hospital's own column names; later files with the same headings are scored the same way."""
     import numpy as np
